@@ -112,3 +112,5 @@
 .flight-feedback-error{--neon:#ff6b89;--neon-fill:#ffe0e8}
 .flight-feedback-text{display:block;color:var(--neon-fill);opacity:.94;font-size:13px;line-height:1.35;font-weight:850;letter-spacing:.01em;overflow-wrap:anywhere;-webkit-text-stroke:.35px var(--neon);paint-order:stroke fill;text-shadow:0 1px 3px #070a12,0 2px 5px #070a12,0 0 6px var(--neon),0 0 16px var(--neon)}
 @media(max-width:370px){.flight-feedback-text{font-size:12px}}
+.sync-label{font-size:clamp(20px,6vw,28px);font-weight:850;color:#fff;line-height:1.2;margin:10px 0;text-align:center;text-shadow:0 2px 8px #000}
+.bet-button:disabled,.bulk-fixed .all-button:disabled{opacity:.55;cursor:not-allowed}
