@@ -91,3 +91,9 @@
 .phone .bulk-fixed .all-button strong{font-size:16px}
 .phone .bulk-fixed .all-button span{font-size:12px}
 @media(max-height:700px){.phone>.game-area{min-height:180px}.phone .bet-panel .bet-card{height:92px}.phone .bet-panel .bet-card:has(.card-error){height:110px}.phone .bet-panel .bet-button{min-height:34px;font-size:15px}.phone .bulk-fixed .all-button{height:42px;min-height:42px}.phase-flying .multiplier{font-size:54px}.phase-flying .multiplier-wide{font-size:43px}}
+/* The brand, balance and menu now share the black top bar. */
+.phone>.topbar{padding:0 4%;height:62px;min-height:62px}
+.topbar .game-header{width:100%;padding:0;display:flex;align-items:center;justify-content:space-between}
+.phone .game-area>.history-wrap{margin-top:10px}
+@media(max-width:370px){.phone>.topbar{padding:0 3.5%}}
+@media(max-height:700px){.phone>.topbar{height:56px;min-height:56px}}
