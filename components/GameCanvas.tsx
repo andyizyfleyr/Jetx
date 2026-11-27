@@ -1,81 +1,85 @@
 'use client';
+
 import { useEffect, useRef } from 'react';
 import { useGame, type Phase } from '@/store/game';
+import CanvasFallback from './CanvasFallback';
 
-// The background plates and jet are original local artwork; Canvas adds parallax and motion.
+/** Pixi runs only in the browser. The original Canvas scene remains underneath as
+ * a graceful fallback on devices without WebGL or if an asset cannot load. */
 export default function GameCanvas() {
-  const ref = useRef<HTMLCanvasElement>(null);
+  const host = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    const canvas = ref.current;
-    const ctx = canvas?.getContext('2d');
-    if (!canvas || !ctx) return;
-    const sky = new Image(); sky.src = '/sky-flight.jpg';
-    const space = new Image(); space.src = '/sky-space.jpg';
-    const jet = new Image(); jet.src = '/jet.webp';
-    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
-    let frame = 0;
-    let previousPhase: Phase = useGame.getState().phase;
-    let changeTime = performance.now();
-    let spaceMix = previousPhase === 'CRASHED' ? 1 : 0;
-    let previousTime = performance.now();
-    const start = performance.now();
-
-    function cover(image: HTMLImageElement, w: number, h: number, drift: number) {
-      if (!image.complete || !image.naturalWidth) return;
-      // Overscan prevents any blank edges while the atmospheric plate drifts.
-      const scale = Math.max(w / image.naturalWidth, h / image.naturalHeight) * 1.1;
-      const iw = image.naturalWidth * scale, ih = image.naturalHeight * scale;
-      ctx!.drawImage(image, (w - iw) / 2 + drift * w * .025, (h - ih) / 2, iw, ih);
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
+    async function start() {
+      const element = host.current;
+      if (!element) return;
+      const { Application, Assets, Container, Graphics, Sprite } = await import('pixi.js');
+      if (disposed) return;
+      const app = new Application();
+      await app.init({ resizeTo: element, backgroundAlpha: 0, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2), preference: 'webgl' });
+      if (disposed) { app.destroy(true); return; }
+      cleanup = () => app.destroy(true, { children: true });
+      const [skyTexture, spaceTexture, cloudTexture, planeTexture] = await Promise.all([
+        Assets.load('/sky-flight.jpg'), Assets.load('/sky-space.jpg'), Assets.load('/cloud.webp'), Assets.load('/plane.webp'),
+      ]);
+      if (disposed) return;
+      const sky = new Sprite(skyTexture), space = new Sprite(spaceTexture);
+      const clouds = new Container(), flight = new Container(), parachutes = new Container(), stars = new Container();
+      sky.anchor.set(.5); space.anchor.set(.5);
+      app.stage.addChild(sky, space, clouds, parachutes, flight, stars);
+      const cloudSprites = Array.from({ length: 5 }, (_, i) => {
+        const sprite = new Sprite(cloudTexture); sprite.anchor.set(.5); sprite.alpha = [.20,.27,.18,.25,.16][i]; clouds.addChild(sprite); return sprite;
+      });
+      // Fine suspension lines and shaded canopy shapes are independent display objects.
+      const divers = Array.from({ length: 5 }, (_, i) => {
+        const diver = new Graphics();
+        diver.moveTo(-20, 0).bezierCurveTo(-19,-19,19,-19,20,0).quadraticCurveTo(15,3,10,0).quadraticCurveTo(5,3,0,0).quadraticCurveTo(-5,3,-10,0).quadraticCurveTo(-15,3,-20,0).fill({ color: i % 2 ? 0x777181 : 0x4b465d, alpha: .85 });
+        diver.moveTo(-20,0).lineTo(0,25).lineTo(20,0).moveTo(-10,0).lineTo(0,25).lineTo(10,0).stroke({ color: 0xccc3ce, alpha: .5, width: .7 });
+        diver.circle(0,27,2.5).fill(0x252431).roundRect(-2,29,4,7,1).fill(0x252431).moveTo(-1,35).lineTo(-4,41).moveTo(1,35).lineTo(4,41).stroke({color:0x252431,width:2});
+        parachutes.addChild(diver); return diver;
+      });
+      const flame = new Graphics(), plane = new Sprite(planeTexture);
+      plane.anchor.set(.5); flight.addChild(flame, plane);
+      const astronauts = Array.from({ length: 3 }, () => {
+        const figure = new Graphics();
+        figure.roundRect(-8,-1,16,19,4).fill(0xa7b9ce).roundRect(-6,0,12,17,3).fill(0xd7e4f1);
+        figure.moveTo(-6,3).lineTo(-13,9).moveTo(6,3).lineTo(12,8).moveTo(-4,16).lineTo(-7,27).moveTo(4,16).lineTo(8,25).stroke({color:0xc9d9e9,width:5,cap:'round'});
+        figure.circle(0,-8,8).fill(0xe5eff8).ellipse(1,-8,5.5,4.5).fill(0x344f72).ellipse(-1,-10,2,1).fill({color:0xffffff,alpha:.55});
+        stars.addChild(figure); return figure;
+      });
+      const sparks = Array.from({ length: 24 }, (_, i) => { const dot = new Graphics().circle(0,0,i % 5 === 0 ? 1.4 : .7).fill({color:0xc9dcff,alpha:.7}); stars.addChild(dot); return dot; });
+      element.appendChild(app.canvas);
+      app.canvas.className = 'pixi-canvas';
+      let phase: Phase = useGame.getState().phase;
+      let phaseStart = performance.now(), last = phaseStart, clock = 0, spaceMix = phase === 'CRASHED' ? 1 : 0;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+      app.ticker.add(() => {
+        const now = performance.now(), delta = Math.min((now-last)/1000,.05); last = now;
+        const state = useGame.getState(), moving = state.animations && !reduced.matches;
+        if (moving) clock += delta;
+        if (state.phase !== phase) { phase=state.phase; phaseStart=now; }
+        const elapsed = moving ? (now-phaseStart)/1000 : 10;
+        spaceMix += ((phase === 'CRASHED' ? 1 : 0)-spaceMix) * (moving ? Math.min(1,delta*3) : 1);
+        const w=app.screen.width, h=app.screen.height;
+        const cover = (sprite: InstanceType<typeof Sprite>) => { const scale=Math.max(w/sprite.texture.width,h/sprite.texture.height)*1.12; sprite.scale.set(scale); sprite.position.set(w/2+Math.sin(clock*.08)*w*.012,h/2); };
+        cover(sky); cover(space); space.alpha=spaceMix;
+        clouds.alpha = 1-spaceMix;
+        cloudSprites.forEach((sprite,i) => { const cw=w*(.5+(i%3)*.18); sprite.width=cw; sprite.height=cw*cloudTexture.height/cloudTexture.width; sprite.x=((i*w*.37-clock*(3+i*1.8))%(w+cw)+w+cw)%(w+cw)-cw/2; sprite.y=h*(.28+(i%3)*.16); });
+        parachutes.alpha=1-spaceMix;
+        divers.forEach((diver,i)=>{diver.scale.set(.45+(i%3)*.12); diver.x=w*(.08+i*.21)+Math.sin(clock*.4+i)*5; diver.y=h*.25+((clock*(2+i*.4)+i*19)%(h*.28)); diver.rotation=Math.sin(clock*.6+i)*.06;});
+        stars.alpha=spaceMix; astronauts.forEach((figure,i)=>{figure.position.set(w*(.12+i*.38)+Math.sin(clock*.35+i)*7,h*(.31+i*.1)+Math.cos(clock*.3+i)*5); figure.scale.set(.45+i*.1); figure.rotation=.3+i*.6+Math.sin(clock*.3)*.1;}); sparks.forEach((dot,i)=>{dot.x=(i*83+17)%w; dot.y=(i*53+19)%h; dot.alpha=.25+.5*(.5+.5*Math.sin(clock*1.1+i));});
+        const progress=Math.min(1,elapsed/1.7); const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
+        flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
+        flight.position.set(w*(.40+.13*progress+escaping*.85)+Math.sin(clock*.9)*4,h*(.43-.06*progress-escaping*.25)+Math.sin(clock*1.1)*3);
+        flight.rotation=-.12-Math.sin(clock*.7)*.025; plane.width=w*.58; plane.height=plane.width*planeTexture.height/planeTexture.width;
+        // Flame is a separate, flickering geometry layer, not baked into the jet image.
+        const tail=-plane.width*.47, flicker=moving?Math.sin(clock*21)*w*.014:0;
+        flame.clear().poly([tail+3,0,tail-w*.23-flicker,0,tail-w*.06,-w*.023]).fill({color:0xff6922,alpha:.35}).poly([tail+3,0,tail-w*.18-flicker,0,tail-w*.035,-w*.011]).fill({color:0xffbe52,alpha:.85}).poly([tail+3,0,tail-w*.1-flicker*.5,0,tail-w*.02,-w*.005]).fill({color:0xfff5b0,alpha:.95});
+      });
     }
-    function parachute(x: number, y: number, size: number, sway: number) {
-      const c = ctx!; c.save(); c.translate(x, y); c.scale(size, size); c.rotate(sway);
-      // A shaded, segmented canopy and fine suspension lines create depth at a small scale.
-      const canopy = c.createLinearGradient(0, -16, 0, 5);
-      canopy.addColorStop(0, 'rgba(145,138,161,.8)'); canopy.addColorStop(1, 'rgba(44,40,64,.86)');
-      c.fillStyle = canopy; c.beginPath(); c.moveTo(-22, 0); c.bezierCurveTo(-21, -22, 21, -22, 22, 0); c.quadraticCurveTo(16, 4, 11, 0); c.quadraticCurveTo(5, 4, 0, 0); c.quadraticCurveTo(-6, 4, -11, 0); c.quadraticCurveTo(-17, 4, -22, 0); c.fill();
-      c.strokeStyle = 'rgba(218,205,215,.3)'; c.lineWidth = .5; c.beginPath(); c.moveTo(-11,0); c.quadraticCurveTo(-10,-15,0,-16); c.quadraticCurveTo(10,-15,11,0); c.moveTo(0,-16); c.lineTo(0,0); c.stroke();
-      c.strokeStyle = 'rgba(35,32,45,.7)'; c.lineWidth = .6; c.beginPath(); c.moveTo(-21,1); c.lineTo(0,26); c.lineTo(21,1); c.moveTo(-10,1); c.lineTo(0,26); c.lineTo(10,1); c.stroke();
-      c.fillStyle = '#3d3949'; c.beginPath(); c.arc(0,26,2.2,0,Math.PI*2); c.fill(); c.fillRect(-2,29,4,7); c.strokeStyle='#3d3949'; c.lineWidth=1.5; c.beginPath(); c.moveTo(-1,35); c.lineTo(-4,41); c.moveTo(1,35); c.lineTo(4,40); c.stroke(); c.restore();
-    }
-    function astronaut(x:number, y:number, size:number, angle:number) {
-      const c=ctx!; c.save(); c.translate(x,y); c.rotate(angle); c.scale(size,size);
-      c.fillStyle='#b5c5d9'; c.fillRect(-8,-1,16,19); c.fillStyle='#d8e2ef'; c.beginPath(); c.roundRect(-7,-2,14,20,4); c.fill();
-      c.strokeStyle='#c1d1e2'; c.lineCap='round'; c.lineWidth=5; c.beginPath(); c.moveTo(-6,3); c.lineTo(-13,9); c.moveTo(6,3); c.lineTo(12,8); c.moveTo(-4,16); c.lineTo(-7,27); c.moveTo(4,16); c.lineTo(8,25); c.stroke();
-      c.fillStyle='#e5eef8'; c.beginPath(); c.arc(0,-8,8,0,Math.PI*2); c.fill(); c.fillStyle='#344f72'; c.beginPath(); c.ellipse(1,-8,5.5,4.5,0,0,Math.PI*2); c.fill(); c.fillStyle='#ffffff88'; c.beginPath(); c.ellipse(-1,-10,2,1,0,0,Math.PI*2); c.fill(); c.restore();
-    }
-    const draw = (now: number) => {
-      const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
-      if (canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)) { canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); }
-      ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
-      const { phase, animations } = useGame.getState();
-      const moving = animations && !reduced.matches;
-      const t = moving ? (now-start)/1000 : 0;
-      if (phase !== previousPhase) { previousPhase = phase; changeTime = now; }
-      const delta = Math.min(100, now-previousTime); previousTime = now;
-      const target = phase === 'CRASHED' ? 1 : 0;
-      spaceMix = moving ? spaceMix + (target-spaceMix)*Math.min(1,delta/420) : target;
-      ctx.fillStyle='#182039'; ctx.fillRect(0,0,w,h);
-      cover(sky,w,h,Math.sin(t*.06));
-      ctx.save(); ctx.globalAlpha=spaceMix; cover(space,w,h,Math.sin(t*.04)); ctx.restore();
-      // Slight darkening protects the legibility of the multiplier and labels.
-      const shade=ctx.createLinearGradient(0,0,0,h); shade.addColorStop(0,'rgba(9,13,26,.24)'); shade.addColorStop(.55,'rgba(16,17,31,.05)'); shade.addColorStop(1,'rgba(13,13,24,.35)'); ctx.fillStyle=shade; ctx.fillRect(0,0,w,h);
-      ctx.save(); ctx.globalAlpha=1-spaceMix;
-      for(let i=0;i<5;i++) { const x=w*(.08+i*.22)+Math.sin(t*.3+i)*4; const y=h*.27+((t*(2+i*.3)+i*19)%(h*.25)); parachute(x,y,.42+(i%3)*.1,Math.sin(t*.6+i)*.05); }
-      if (phase === 'FLYING' && jet.complete && jet.naturalWidth) {
-        const flightTime = moving ? (now-changeTime)/1000 : 3;
-        const entrance = Math.min(1,flightTime/1.5);
-        const x=w*(.39+entrance*.1)+Math.sin(t*.7)*4, y=h*(.43-entrance*.035)+Math.sin(t*1.2)*2;
-        const jw=w*.59, jh=jw*jet.naturalHeight/jet.naturalWidth;
-        ctx.save(); ctx.translate(x,y); ctx.rotate(-.1); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
-      }
-      ctx.restore();
-      ctx.save(); ctx.globalAlpha=spaceMix*.8;
-      for(let i=0;i<3;i++) astronaut(w*(.12+i*.38)+Math.sin(t*.35+i)*7,h*(.31+i*.1)+Math.cos(t*.3+i)*5,.45+i*.1, .3+i*.6+Math.sin(t*.3)*.1);
-      ctx.restore();
-      frame=requestAnimationFrame(draw);
-    };
-    frame=requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(frame);
+    start().catch(() => { cleanup?.(); cleanup = undefined; });
+    return () => { disposed = true; cleanup?.(); };
   }, []);
-  return <canvas ref={ref} className="game-canvas" aria-hidden="true" />;
+  return <><CanvasFallback /><div ref={host} className="pixi-host" aria-hidden="true" /></>;
 }
