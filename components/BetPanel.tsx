@@ -27,10 +27,10 @@ export default function BetPanel() {
     </div>
     {autoCash && <div className="auto-target-row"><span>Encaisser automatiquement à</span><label className="target"><input aria-label="Multiplicateur cible" type="number" min="1.01" step="0.1" value={autoTarget} onChange={e => set({ autoTarget: Math.max(1.01, Number(e.target.value) || 1.01) })} />x</label></div>}
     <div className="bet-grid">{bets.map((b, i) => <BetCard key={i} bet={b} index={i} amount={amounts[i]} setAmount={value => { setAmounts(previous => previous.map((amount, j) => i === j ? value : amount)); setMessage(''); }} />)}</div>
-    <div className="bulk-actions" aria-label="Actions groupées">
-      <button className="bulk-button bulk-place" disabled={!free.length} onClick={placeEverything}><span><strong>Placer toutes les mises</strong><small>{free.length} mise{free.length !== 1 ? 's' : ''} libre{free.length !== 1 ? 's' : ''}{phase !== 'WAITING' ? ' · prochaine manche' : ''}</small></span><b>$ {money(totalPlace)}</b></button>
-      <button className="bulk-button bulk-cancel" disabled={!queued.length} onClick={() => { cancelAll(); setMessage('Mises en attente annulées et remboursées.'); }}><span><strong>Tout annuler</strong><small>{queued.length} en attente</small></span><b>$ {money(totalQueued)}</b></button>
-      <button className="bulk-button bulk-cash" disabled={phase !== 'FLYING' || !active.length} onClick={() => { const gain = cashAll(); if (gain) { playSound('cash', sound); setMessage(`Gains encaissés : $ ${money(gain)}.`); } }}><span><strong>Tout encaisser</strong><small>{active.length} en vol</small></span><b>$ {money(totalActive)}</b></button>
+    <div className="bulk-actions classic-actions" aria-label="Actions groupées">
+      {phase === 'FLYING' && active.length > 0 && <button className="all-button all-green" onClick={() => { const gain = cashAll(); if (gain) { playSound('cash', sound); setMessage(`Gains encaissés : $ ${money(gain)}.`); } }}><strong>Tout encaisser</strong><span>$ {money(totalActive)}</span></button>}
+      {queued.length > 0 && <button className="all-button all-red" onClick={() => { cancelAll(); setMessage('Mises en attente annulées et remboursées.'); }}><strong>Tout annuler</strong><span>$ {money(totalQueued)}</span></button>}
+      {free.length > 0 && <button className="all-button all-place" onClick={placeEverything}><strong>Placer toutes les mises</strong><span>$ {money(totalPlace)}{phase !== 'WAITING' ? ' · prochaine manche' : ''}</span></button>}
     </div><div className="bulk-message" role="status" aria-live="polite">{message}</div>
   </div>;
 }
