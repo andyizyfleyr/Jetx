@@ -53,7 +53,7 @@ export default function PredictionsPage() {
   const upcoming = current && snapshot ? snapshot.rounds.filter(round => round.id > current.id).slice(0, 4) : [];
 
   const nextMode = snapshot?.scheduled?.mode ?? upcoming[0]?.mode;
-  const modeLabels: Record<GameMode, string> = { normal: 'Normal', gentil: 'Gentil', mechant: 'Méchant', pire: 'Pire' };
+  const modeLabels: Record<GameMode, string> = { normal: 'Normal', gentil: 'Gentil', plus_gentil: 'Plus gentil', beaucoup_plus_gentil: 'Beaucoup plus gentil', mechant: 'Méchant', pire: 'Pire', plus_pire: 'Plus pire', beaucoup_plus_pire: 'Beaucoup plus pire' };
   async function selectMode(mode: GameMode) {
     if (busy || !fresh || !snapshot?.controlsAvailable || !nextMode) return;
     const requested = mode === nextMode ? 'normal' : mode;
@@ -81,7 +81,7 @@ export default function PredictionsPage() {
     <section className="forecast-content">
       <section className="mode-controls" aria-label="Réglage des modes">
         <div className="mode-grid" role="group" aria-label="Choisir le mode des prochaines manches">
-          {(['gentil', 'mechant', 'pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><span>{mode === 'gentil' ? 'Plus hauts' : mode === 'mechant' ? 'Plus bas' : 'Très bas'}</span><i aria-hidden="true"/></button>)}
+          {(['gentil', 'plus_gentil', 'beaucoup_plus_gentil', 'mechant', 'pire', 'plus_pire', 'beaucoup_plus_pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><span>{mode.includes('gentil') ? 'Plus hauts' : 'Plus bas'}</span><i aria-hidden="true"/></button>)}
         </div>
         <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Appuyez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}

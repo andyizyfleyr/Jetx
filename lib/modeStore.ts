@@ -22,6 +22,13 @@ async function withSchedule<T>(callback: (client: PoolClient, events: ModeEvent[
       effective_id bigint PRIMARY KEY, start_ms double precision NOT NULL,
       mode text NOT NULL CHECK (mode IN ('normal','gentil','mechant','pire'))
     )`);
+    // Upgrade the original four-mode constraint without losing existing events.
+    await client.query(`DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conrelid = 'skyjet_mode_events'::regclass AND conname = 'skyjet_mode_events_mode_check_v2') THEN
+        ALTER TABLE skyjet_mode_events DROP CONSTRAINT IF EXISTS skyjet_mode_events_mode_check;
+        ALTER TABLE skyjet_mode_events ADD CONSTRAINT skyjet_mode_events_mode_check_v2 CHECK (mode IN ('normal','gentil','plus_gentil','beaucoup_plus_gentil','mechant','pire','plus_pire','beaucoup_plus_pire'));
+      END IF;
+    END $$`);
     const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode }>('SELECT effective_id, start_ms, mode FROM skyjet_mode_events ORDER BY effective_id');
     const events = rows.rows.map(row => ({ effectiveId: Number(row.effective_id), start: Number(row.start_ms), mode: row.mode }));
     const result = await callback(client, events, Date.now());

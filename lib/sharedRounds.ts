@@ -1,10 +1,11 @@
 /** Public, deterministic demo schedule. Never suitable for real-money gaming. */
-export type GameMode = 'normal' | 'gentil' | 'mechant' | 'pire';
+export const GAME_MODES = ['normal', 'gentil', 'plus_gentil', 'beaucoup_plus_gentil', 'mechant', 'pire', 'plus_pire', 'beaucoup_plus_pire'] as const;
+export type GameMode = typeof GAME_MODES[number];
 export type ModeEvent = { effectiveId: number; start: number; mode: GameMode };
 export type SharedRound = { id: number; start: number; flightStart: number; crashAt: number; end: number; crash: number; mode: GameMode };
 const EPOCH = Date.UTC(2026, 0, 1);
 const SIZE = 65536, WAIT_MS = 5000, CRASH_MS = 3000;
-const modes: GameMode[] = ['normal', 'gentil', 'mechant', 'pire'];
+const modes = GAME_MODES;
 const crashes = Object.fromEntries(modes.map(m => [m, new Float64Array(SIZE)])) as Record<GameMode, Float64Array>;
 const starts = Object.fromEntries(modes.map(m => [m, new Float64Array(SIZE + 1)])) as Record<GameMode, Float64Array>;
 function randomForIndex(index: number) {
@@ -16,7 +17,7 @@ function randomForIndex(index: number) {
 for (let i = 0; i < SIZE; i++) {
   const base = Math.max(1, .97 / (1 - randomForIndex(i)));
   // Monotonic transforms preserve the long tail, including values above 1000x.
-  const values: Record<GameMode, number> = { normal: base, gentil: 1 + (base - 1) * 2, mechant: 1 + (base - 1) * .5, pire: 1 + (base - 1) * .2 };
+  const values: Record<GameMode, number> = { normal: base, gentil: 1 + (base - 1) * 2, plus_gentil: 1 + (base - 1) * 4, beaucoup_plus_gentil: 1 + (base - 1) * 8, mechant: 1 + (base - 1) * .5, pire: 1 + (base - 1) * .2, plus_pire: 1 + (base - 1) * .1, beaucoup_plus_pire: 1 + (base - 1) * .05 };
   for (const mode of modes) {
     crashes[mode][i] = values[mode];
     starts[mode][i + 1] = starts[mode][i] + WAIT_MS + Math.log(values[mode]) / .00006 + CRASH_MS;
