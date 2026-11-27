@@ -105,3 +105,9 @@
 @keyframes balance-feedback{0%{color:#ffe069;transform:scale(1.06)}100%{color:#fff;transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.balance-amount{animation:none}}
 .bulk-fixed .bulk-message:not(:empty){margin:0 4px 6px}
+/* Notifications enter from the top of the flight area and leave upward. */
+.flight-feedback-layer{position:absolute;z-index:5;top:48px;left:4%;right:4%;display:flex;justify-content:center;pointer-events:none}
+.flight-feedback{position:relative;display:flex;align-items:center;gap:10px;width:max-content;max-width:100%;min-height:48px;padding:9px 9px 9px 11px;overflow:hidden;border:1px solid #ffffff35;border-radius:15px;background:rgba(20,25,36,.96);box-shadow:0 8px 24px #0007,0 1px 0 #ffffff16 inset;pointer-events:auto;backdrop-filter:blur(14px)}
+.flight-feedback-icon{width:27px;height:27px;flex:0 0 27px;border-radius:50%;display:grid;place-items:center;background:#344961;color:#c7e7ff}.flight-feedback-success .flight-feedback-icon{background:#164e32;color:#a4ffc0}.flight-feedback-error .flight-feedback-icon{background:#572331;color:#ffb7c1}
+.flight-feedback-text{color:#fff;font-size:12px;line-height:1.3;font-weight:700;overflow-wrap:anywhere}.flight-feedback-close{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border:0;border-radius:50%;background:#ffffff0d;color:#eef0f6}.flight-feedback-progress{position:absolute;bottom:0;left:0;right:0;height:2px;background:#b5dfff;transform-origin:left}.flight-feedback-success .flight-feedback-progress{background:#75e79d}.flight-feedback-error .flight-feedback-progress{background:#ff879c}
+@media(max-width:370px){.flight-feedback-text{font-size:11px}.flight-feedback{gap:7px}}
