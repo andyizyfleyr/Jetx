@@ -217,3 +217,8 @@
 }
 
 @media(min-width:1000px){.activity-row.activity-own{background:#4bc98219;border:1px solid #70e2a052}.activity-avatar.own{background:#278753;color:#fff}.activity-own .activity-player{color:#d9ffe7}}
+
+/* Match collective actions to the individual bet buttons. */
+.phone .bulk-fixed .all-button{border:1px solid #ffffff80;border-radius:15px;color:#fff;font-weight:850;text-shadow:0 1px 3px #0007;box-shadow:inset 0 1px 2px #ffffff55,0 3px 6px #0005}
+.phone .bulk-fixed .all-place,.phone .bulk-fixed .all-green{background:linear-gradient(#00c74c,#009e37)}
+.phone .bulk-fixed .all-red{background:linear-gradient(#e93450,#cd1030)}
