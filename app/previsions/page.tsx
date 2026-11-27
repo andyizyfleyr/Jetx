@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ArrowUpRight, Clock3, Info, Radar, Sparkles } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Clock3, Info } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { SharedRound, GameMode, ModeEvent } from '@/lib/sharedRounds';
 
@@ -79,19 +79,13 @@ export default function PredictionsPage() {
       <span className="forecast-badge">DÉMO</span>
     </header>
     <section className="forecast-content">
-      <div className="forecast-kicker"><Radar size={15}/> MANCHES COMMUNES</div>
-      <h1>Les prochains<br/><em>multiplicateurs.</em></h1>
-      <p className="forecast-intro">Repérez la manche affichée dans le jeu, puis les manches qui suivront.</p>
-      <div className="forecast-banner"><div className="forecast-icon"><Sparkles size={19}/></div><div><strong>Un aperçu, pas une prédiction magique</strong><p>Cette démo utilise un calendrier public et prévisible. Les résultats programmés peuvent changer si un visiteur modifie le mode. Ils ne prédisent pas les autres jeux.</p></div></div>
-      <section className="mode-controls" aria-labelledby="mode-heading">
-        <div className="mode-heading"><div><span>PILOTAGE DE LA DÉMO</span><h2 id="mode-heading">Mode des manches</h2></div><span className="mode-public">PUBLIC</span></div>
-        <p>Ces commandes sont accessibles à tous et modifient les manches communes à partir d’une manche future. La manche affichée ne change pas ; un délai de synchronisation peut décaler l’application.</p>
+      <section className="mode-controls" aria-label="Réglage des modes">
         <div className="mode-grid" role="group" aria-label="Choisir le mode des prochaines manches">
           {(['gentil', 'mechant', 'pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><span>{mode === 'gentil' ? 'Plus hauts' : mode === 'mechant' ? 'Plus bas' : 'Très bas'}</span><i aria-hidden="true"/></button>)}
         </div>
         <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Appuyez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}
-        <p className="mode-disclaimer">Les modes modifient les tendances, pas des valeurs garanties. Démo prévisible, sans argent réel.</p>
+        <p className="mode-disclaimer">Les résultats peuvent changer selon le mode choisi par les visiteurs. Démo prévisible, sans argent réel.</p>
         {notice && <div className="mode-notice" role="status">{notice}</div>}
       </section>
       <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div><div className={`forecast-status ${current ? 'live' : ''}`}><i/>{current ? 'Synchronisé' : 'Synchronisation'}</div></div>
@@ -101,7 +95,7 @@ export default function PredictionsPage() {
         <p>{phase === 'waiting' ? 'C’est la manche du compte à rebours affiché dans le jeu.' : phase === 'flying' ? 'C’est la manche actuellement en vol dans le jeu.' : 'Cette manche vient de se terminer. La suivante arrive après la pause.'}</p>
       </article> : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Synchronisation de la manche…'}</div>}
       <div className="forecast-section-title forecast-upcoming-title"><div><span>APRÈS CETTE MANCHE</span><h2>Manches suivantes</h2></div></div>
-      <p className="forecast-sequence">La première carte ci-dessous correspond à la manche qui suit celle affichée dans le jeu, et non à celle du compte à rebours actuel.</p>
+      <p className="forecast-sequence">Ces manches viennent après celle affichée dans le jeu.</p>
       <div className="forecast-list" aria-live="polite">
         {upcoming.length ? upcoming.map((round, i) => <article className="forecast-card" key={round.id}>
           <div className="forecast-number">{String(i + 1).padStart(2, '0')}</div>
