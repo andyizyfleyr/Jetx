@@ -63,7 +63,7 @@ export default function GameCanvas() {
         const elapsed = moving ? (now-phaseStart)/1000 : 10;
         spaceMix += ((phase === 'CRASHED' ? 1 : 0)-spaceMix) * (moving ? Math.min(1,delta*3) : 1);
         const w=app.screen.width, h=app.screen.height;
-        const { seconds: travel, ascent, entrance } = flightVisual(state.multiplier, moving);
+        const { seconds: travel, ascent, x: flightX, y: flightY, rotation: bank } = flightVisual(state.multiplier, moving);
         // The camera follows the same flight timeline as the aircraft. Overscan
         // keeps the photograph covering the viewport as altitude changes.
         const cover = (sprite: InstanceType<typeof Sprite>, isSky: boolean) => {
@@ -80,11 +80,11 @@ export default function GameCanvas() {
         stars.alpha=spaceMix; astronauts.forEach((figure,i)=>{figure.position.set(w*(.12+i*.38)+Math.sin(clock*.35+i)*7,h*(.31+i*.1)+Math.cos(clock*.3+i)*5); figure.scale.set(.45+i*.1); figure.rotation=.3+i*.6+Math.sin(clock*.3)*.1;}); sparks.forEach((dot,i)=>{dot.x=(i*83+17)%w; dot.y=(i*53+19)%h; dot.alpha=.25+.5*(.5+.5*Math.sin(clock*1.1+i));});
         const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
         flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
-        flight.position.set(w*(.40+.10*entrance+.03*ascent+escaping*.85)+Math.sin(clock*.9)*3,h*(.44-.025*entrance-.035*ascent-escaping*.25)+Math.sin(clock*1.1)*2);
-        flight.rotation=-.09-.08*ascent-Math.sin(clock*.7)*.015; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
+        flight.position.set(w*(flightX+escaping*.85),h*(flightY-escaping*.25));
+        flight.rotation=bank; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
         // Flame is a separate, flickering geometry layer, not baked into the jet image.
         const tail=-plane.width*.47, flicker=moving?Math.sin(clock*21)*w*.014:0;
-        flame.clear().poly([tail+3,0,tail-w*.23-flicker,0,tail-w*.06,-w*.023]).fill({color:0xff6922,alpha:.35}).poly([tail+3,0,tail-w*.18-flicker,0,tail-w*.035,-w*.011]).fill({color:0xffbe52,alpha:.85}).poly([tail+3,0,tail-w*.1-flicker*.5,0,tail-w*.02,-w*.005]).fill({color:0xfff5b0,alpha:.95});
+        flame.clear().poly([tail+4,-w*.018,tail-w*.24-flicker,0,tail+4,w*.018]).fill({color:0xff6922,alpha:.38}).poly([tail+4,-w*.011,tail-w*.19-flicker,0,tail+4,w*.011]).fill({color:0xffa93d,alpha:.8}).poly([tail+4,-w*.005,tail-w*.11-flicker*.5,0,tail+4,w*.005]).fill({color:0xfff4b0,alpha:.95});
       });
     }
     start().catch(() => { cleanup?.(); cleanup = undefined; });
