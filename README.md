@@ -35,7 +35,7 @@ Renseigner `DATABASE_URL` dans les variables d’environnement Vercel avec l’U
 
 Sans variable, le jeu continue en mode normal et les commandes restent désactivées. Si la base configurée est indisponible, les clients suspendent la synchronisation plutôt que de produire des manches divergentes. Les commandes sont publiques : n’importe quel visiteur peut modifier les manches pour tous. Elles ne conviennent pas à une production sécurisée.
 
-Un changement s’applique à une manche future, indiquée sur la page ; un délai de publication d’au moins huit secondes permet de synchroniser les clients, donc il peut prendre effet après la manche immédiatement suivante. La manche en cours ne change jamais. Les modes modifient les tendances du calendrier : gentil multiplie l’écart à 1x par 2, méchant par 0,5, pire par 0,2. Il n’y a aucune garantie de résultat. Les prévisions peuvent changer si un visiteur modifie le mode.
+Un changement s’applique à une manche future, indiquée sur la page ; un délai de publication d’au moins huit secondes permet de synchroniser les clients, donc il peut prendre effet après la manche immédiatement suivante. La manche en cours ne change jamais. Les modes modifient les tendances du calendrier : gentil multiplie l’écart à 1x par 2, plus gentil par 4, beaucoup plus gentil par 8, méchant par 0,5, pire par 0,2, plus pire par 0,1 et beaucoup plus pire par 0,05. Il n’y a aucune garantie de résultat. Les prévisions peuvent changer si un visiteur modifie le mode.
 
 ### Écran actif
 
