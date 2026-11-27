@@ -115,7 +115,7 @@ export default function PredictionsPage() {
           <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
         </article>) : null}
       </div>
-      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Sans argent réel.</span></div>
+      <div className="forecast-footnote"><Info size={16}/><span>Heures locales.</span></div>
       <Link href="/" className="forecast-play">Retourner au jeu <ArrowUpRight size={18}/></Link>
     </section>
   </main>;
