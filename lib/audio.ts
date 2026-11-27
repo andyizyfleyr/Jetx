@@ -1,7 +1,10 @@
-// Original Web Audio effects: no third-party or proprietary recordings.
+// CC0 recordings are loaded locally; the countdown and flyaway are synthesized.
 let context: AudioContext | undefined;
 let master: GainNode | undefined;
-let engine: { sources: AudioScheduledSourceNode[]; gain: GainNode; tone: OscillatorNode; filter: BiquadFilterNode } | undefined;
+let engine: { source: AudioBufferSourceNode; gain: GainNode; filter: BiquadFilterNode } | undefined;
+let jetSample: AudioBuffer | undefined;
+let cashSample: AudioBuffer | undefined;
+let loadingSamples = false;
 let noise: AudioBuffer | undefined;
 
 /** Browsers require a user gesture before sound can play. */
@@ -11,6 +14,19 @@ export function unlockAudio() {
     context ||= new AudioContext();
     if (!master) { master = context.createGain(); master.gain.value = 0.75; master.connect(context.destination); }
     if (context.state === 'suspended') void context.resume().catch(() => {});
+    if (!loadingSamples && (!jetSample || !cashSample)) {
+      loadingSamples = true;
+      const ctx = context;
+      const load = async (url: string) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Sound unavailable');
+        return ctx.decodeAudioData(await response.arrayBuffer());
+      };
+      void Promise.allSettled([
+        jetSample ? Promise.resolve() : load('/sounds/jet-loop.wav').then(buffer => { jetSample = buffer; }),
+        cashSample ? Promise.resolve() : load('/sounds/cash-register.wav').then(buffer => { cashSample = buffer; }),
+      ]).then(() => { loadingSamples = false; });
+    }
   } catch { /* Audio is optional on unsupported devices. */ }
 }
 
@@ -29,28 +45,26 @@ export function stopEngine() {
   const now = context.currentTime;
   old.gain.gain.cancelScheduledValues(now);
   old.gain.gain.setTargetAtTime(0.0001, now, .06);
-  old.sources.forEach(source => { try { source.stop(now + .35); } catch { /* already stopped */ } });
+  try { old.source.stop(now + .35); } catch { /* already stopped */ }
 }
 
-/** A continuous, low jet rumble and filtered airflow, rather than repeated beeps. */
+/** A recorded jet loop, filtered for a lower, more powerful engine sound. */
 export function updateEngine(enabled: boolean, multiplier: number) {
-  if (!enabled || !context || !master || context.state !== 'running') { stopEngine(); return; }
+  if (!enabled || !context || !master || context.state !== 'running' || !jetSample) { stopEngine(); return; }
   try {
     const ctx = context, now = ctx.currentTime;
     if (!engine) {
-      const gain = ctx.createGain(); gain.gain.setValueAtTime(.0001, now); gain.gain.setTargetAtTime(.055, now, .25); gain.connect(master);
-      const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 500; filter.connect(gain);
-      const wind = ctx.createBufferSource(); wind.buffer = noiseBuffer(ctx); wind.loop = true; wind.connect(filter); wind.start(now);
-      const tone = ctx.createOscillator(); tone.type = 'sawtooth'; tone.frequency.value = 72;
-      const toneGain = ctx.createGain(); toneGain.gain.value = .28; tone.connect(toneGain); toneGain.connect(filter); tone.start(now);
-      engine = { sources: [wind, tone], gain, tone, filter };
+      const gain = ctx.createGain(); gain.gain.setValueAtTime(.0001, now); gain.gain.setTargetAtTime(.9, now, .25); gain.connect(master);
+      const filter = ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 2000; filter.connect(gain);
+      const source = ctx.createBufferSource(); source.buffer = jetSample; source.loop = true; source.playbackRate.value = .9;
+      source.connect(filter); source.start(now);
+      engine = { source, gain, filter };
     }
-    // Capped pitch prevents piercing sound on long flights.
     const intensity = Math.min(1, Math.log(Math.max(1, multiplier)) / Math.log(20));
-    engine.tone.frequency.cancelScheduledValues(now);
+    engine.source.playbackRate.cancelScheduledValues(now);
     engine.filter.frequency.cancelScheduledValues(now);
-    engine.tone.frequency.setTargetAtTime(72 + intensity * 65, now, .2);
-    engine.filter.frequency.setTargetAtTime(500 + intensity * 650, now, .2);
+    engine.source.playbackRate.setTargetAtTime(.9 + intensity * .18, now, .2);
+    engine.filter.frequency.setTargetAtTime(2000 + intensity * 800, now, .2);
   } catch { stopEngine(); }
 }
 
@@ -66,11 +80,14 @@ export function playSound(kind: 'tick' | 'cash' | 'crash', enabled: boolean) {
       osc.connect(gain); gain.connect(output); osc.start(at); osc.stop(at + duration + .01);
     };
     if (kind === 'cash') {
-      // A short original bright coin/register flourish, not Pocket Option's audio.
-      [880, 1320, 1760].forEach((frequency, i) => {
-        note(frequency, now + i * .075, .32, .085);
-        note(frequency * 2.01, now + i * .075, .13, .018);
-      });
+      if (cashSample) {
+        const source = ctx.createBufferSource(), gain = ctx.createGain();
+        source.buffer = cashSample; gain.gain.value = 2.5;
+        source.connect(gain); gain.connect(output); source.start(now);
+      } else {
+        // Keep a short fallback if the recording is still loading or unavailable.
+        [880, 1320, 1760].forEach((frequency, i) => note(frequency, now + i * .075, .32, .085));
+      }
     } else if (kind === 'tick') {
       note(600, now, .09, .025);
     } else {
