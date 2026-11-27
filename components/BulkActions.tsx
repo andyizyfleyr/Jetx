@@ -16,14 +16,14 @@ export default function BulkActions({ amounts }: { amounts: string[] }) {
     set({ invalidBets: invalid });
     const result = placeAll(values);
     if (result === 'offline') return;
-    const text = result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : minimum ₣ 1,00.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
+    const text = result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : minimum 1,00 ₣.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
     notify(text, result === 'ok' ? 'success' : 'error');
   };
   return <div className="bulk-fixed">
     <div className="bulk-actions classic-actions" aria-label="Actions groupées">
-      {phase === 'FLYING' && active.length > 0 && <button className="all-button all-green" disabled={!syncReady} onClick={() => { const gain = cashAll(); if (gain) { playSound('cash', sound); notify(`Gains encaissés : ₣ ${money(gain)} à ${useGame.getState().multiplier.toFixed(2)}x.`, 'success'); } }}><strong>Tout encaisser</strong><span>₣ {money(totalActive)}</span></button>}
-      {queued.length > 0 && <button className="all-button all-red" disabled={!syncReady} onClick={() => { const cancelled = cancelAll(); if (cancelled) notify(`Mises annulées : ₣ ${money(cancelled)} remboursés.`, 'success'); }}><strong>Tout annuler</strong><span>₣ {money(totalQueued)}</span></button>}
-      {free.length > 0 && <button className="all-button all-place" disabled={!syncReady} onClick={placeEverything}><strong>Placer toutes les mises</strong><span>₣ {money(totalPlace)}{phase !== 'WAITING' ? ' · prochaine manche' : ''}</span></button>}
+      {phase === 'FLYING' && active.length > 0 ? <button className="all-button all-green" disabled={!syncReady} onClick={() => { const gain = cashAll(); if (gain) { playSound('cash', sound); notify(`Gains encaissés : ${money(gain)} ₣ à ${useGame.getState().multiplier.toFixed(2)}x.`, 'success'); } }}><strong>Tout encaisser</strong><span>{money(totalActive)} ₣</span></button>
+        : queued.length > 0 ? <button className="all-button all-red" disabled={!syncReady} onClick={() => { const cancelled = cancelAll(); if (cancelled) notify(`Mises annulées : ${money(cancelled)} ₣ remboursés.`, 'success'); }}><strong>Tout annuler</strong><span>{money(totalQueued)} ₣</span></button>
+        : <button className="all-button all-place" disabled={!syncReady || free.length === 0} onClick={placeEverything}><strong>Placer toutes les mises</strong><span>{money(totalPlace)} ₣{phase !== 'WAITING' ? ' · prochaine manche' : ''}</span></button>}
     </div>
   </div>;
 }

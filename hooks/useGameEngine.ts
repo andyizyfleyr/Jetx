@@ -77,9 +77,9 @@ export function useGameEngine() {
       s.set({ syncReady: true, roundId: round.id, phase, multiplier, countdown: phase === 'WAITING' ? Math.max(0, Math.ceil((round.flightStart - now) / 1000)) : 0,
         bets, balance, history, players, ...(roundChanged ? { online: 2050 + Math.floor(Math.random() * 110) } : {}) });
       const notes: string[] = [];
-      if (autoCount) { notes.push(`Encaissement auto : ₣ ${money(autoGain)} à ${s.autoTarget.toFixed(2)}x.`); playSound('cash', s.sound); }
-      if (lostCount) notes.push(`${lostCount > 1 ? 'Mises perdues' : 'Mise perdue'} : ₣ ${money(lostTotal)}.`);
-      if (refunded) notes.push(`Mises remboursées après déconnexion : ₣ ${money(refunded)}.`);
+      if (autoCount) { notes.push(`Encaissement auto : ${money(autoGain)} ₣ à ${s.autoTarget.toFixed(2)}x.`); playSound('cash', s.sound); }
+      if (lostCount) notes.push(`${lostCount > 1 ? 'Mises perdues' : 'Mise perdue'} : ${money(lostTotal)} ₣.`);
+      if (refunded) notes.push(`Mises remboursées après déconnexion : ${money(refunded)} ₣.`);
       if (replayed) notes.push('Jeu auto : mises replacées.');
       if (skipped) notes.push('Solde insuffisant pour certaines mises.');
       if (notes.length) s.notify(notes.join(' '), lostCount || skipped ? 'error' : 'success');
@@ -112,9 +112,11 @@ export function useGameEngine() {
       finally { inflight = false; }
     };
     const unlock = () => { unlockAudio(); setAudioEnabled(useGame.getState().sound); };
+    // Try immediately when the browser permits autoplay; gestures remain the fallback.
+    if (useGame.getState().sound) unlock();
     window.addEventListener('pointerdown', unlock, true);
     window.addEventListener('keydown', unlock, true);
-    const unsubscribeSound = useGame.subscribe((state, previous) => { if (state.sound !== previous.sound) setAudioEnabled(state.sound); });
+    const unsubscribeSound = useGame.subscribe((state, previous) => { if (state.sound !== previous.sound) { if (state.sound) unlockAudio(); setAudioEnabled(state.sound); } });
     const onVisibility = () => { stopEngine(); needsSync = true; useGame.setState({ syncReady: false }); if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('focus', onVisibility);
