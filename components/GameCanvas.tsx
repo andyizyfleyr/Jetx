@@ -22,7 +22,7 @@ export default function GameCanvas() {
       if (disposed) { app.destroy(true); return; }
       cleanup = () => app.destroy(true, { children: true });
       const [skyTexture, spaceTexture, cloudTexture, planeTexture] = await Promise.all([
-        Assets.load('/sky-flight.jpg'), Assets.load('/sky-space.jpg'), Assets.load('/cloud.webp'), Assets.load('/plane.webp'),
+        Assets.load('/sky-purple.jpg'), Assets.load('/sky-space.jpg'), Assets.load('/cloud.webp'), Assets.load('/plane.webp'),
       ]);
       if (disposed) return;
       const sky = new Sprite(skyTexture), space = new Sprite(spaceTexture);
@@ -65,7 +65,7 @@ export default function GameCanvas() {
         const w=app.screen.width, h=app.screen.height;
         const { seconds: travel, ascent, x: flightX, y: flightY, rotation: bank } = flightVisual(state.multiplier, moving);
         // The camera follows the same flight timeline as the aircraft. Overscan
-        // keeps the photograph covering the viewport as altitude changes.
+        // keeps the background covering the viewport as altitude changes.
         const cover = (sprite: InstanceType<typeof Sprite>, isSky: boolean) => {
           const scale=Math.max(w/sprite.texture.width,h/sprite.texture.height)*(isSky ? 1.35 : 1.12);
           sprite.scale.set(scale);

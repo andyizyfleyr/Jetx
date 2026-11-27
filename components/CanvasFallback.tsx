@@ -10,7 +10,7 @@ export default function CanvasFallback() {
     const canvas = ref.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
-    const sky = new Image(); sky.src = '/sky-flight.jpg';
+    const sky = new Image(); sky.src = '/sky-purple.jpg';
     const space = new Image(); space.src = '/sky-space.jpg';
     const jet = new Image(); jet.src = '/jet.webp';
     const cloud = new Image(); cloud.src = '/cloud.webp';
