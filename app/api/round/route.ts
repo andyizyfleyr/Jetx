@@ -1,9 +1,10 @@
-import { getSharedSchedule } from '@/lib/sharedRounds';
+import { readSchedule } from '@/lib/modeStore';
 
-// No persistence or credentials: UTC is the shared authority for this demo.
 export async function GET() {
-  const serverTime = Date.now();
-  return Response.json({ serverTime, rounds: getSharedSchedule(serverTime) }, {
-    headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' },
-  });
+  try {
+    const data = await readSchedule();
+    return Response.json(data, { headers: { 'Cache-Control': 'no-store, max-age=0', 'CDN-Cache-Control': 'no-store' } });
+  } catch {
+    return Response.json({ error: 'Synchronisation indisponible' }, { status: 503, headers: { 'Cache-Control': 'no-store' } });
+  }
 }

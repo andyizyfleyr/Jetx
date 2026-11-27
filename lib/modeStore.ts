@@ -1,0 +1,59 @@
+import 'server-only';
+import { Pool, type PoolClient } from 'pg';
+import { getSharedSchedule, type GameMode, type ModeEvent } from './sharedRounds';
+
+let pool: Pool | undefined;
+function getPool() {
+  if (!process.env.DATABASE_URL) return null;
+  pool ??= new Pool({ connectionString: process.env.DATABASE_URL, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 });
+  return pool;
+}
+async function withSchedule<T>(callback: (client: PoolClient, events: ModeEvent[], now: number) => Promise<T>): Promise<T> {
+  const db = getPool();
+  if (!db) throw new Error('DATABASE_NOT_CONFIGURED');
+  const client = await db.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query("SET LOCAL statement_timeout = '3s'");
+    await client.query("SET LOCAL lock_timeout = '3s'");
+    // Serialize reads and writes so no client sees a half-written transition.
+    await client.query('SELECT pg_advisory_xact_lock($1)', [194851277]);
+    await client.query(`CREATE TABLE IF NOT EXISTS skyjet_mode_events (
+      effective_id bigint PRIMARY KEY, start_ms double precision NOT NULL,
+      mode text NOT NULL CHECK (mode IN ('normal','gentil','mechant','pire'))
+    )`);
+    const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode }>('SELECT effective_id, start_ms, mode FROM skyjet_mode_events ORDER BY effective_id');
+    const events = rows.rows.map(row => ({ effectiveId: Number(row.effective_id), start: Number(row.start_ms), mode: row.mode }));
+    const result = await callback(client, events, Date.now());
+    await client.query('COMMIT');
+    return result;
+  } catch (error) { await client.query('ROLLBACK'); throw error; }
+  finally { client.release(); }
+}
+export async function readSchedule() {
+  if (!getPool()) {
+    const serverTime = Date.now();
+    return { serverTime, rounds: getSharedSchedule(serverTime), controlsAvailable: false, scheduled: null };
+  }
+  return withSchedule(async (_client, events, serverTime) => {
+    const rounds = getSharedSchedule(serverTime, events);
+    const current = rounds.find(r => r.start <= serverTime && serverTime < r.end);
+    return { serverTime, rounds, controlsAvailable: true, scheduled: events.filter(e => current && e.effectiveId > current.id).at(-1) ?? null };
+  });
+}
+export async function changeMode(mode: GameMode) {
+  return withSchedule(async (client, events, now) => {
+    const rounds = getSharedSchedule(now, events);
+    const current = rounds.find(r => r.start <= now && now < r.end);
+    if (!current) throw new Error('NO_CURRENT_ROUND');
+    // Keep a short publication window for clients to fetch the new schedule.
+    // Very short current rounds may make the change take effect one round later.
+    const target = rounds.find(r => r.id > current.id && r.start >= now + 8000);
+    if (!target) throw new Error('NO_FUTURE_ROUND');
+    const previous = rounds.find(r => r.id === target.id - 1);
+    if (!previous) throw new Error('NO_PREVIOUS_ROUND');
+    await client.query('DELETE FROM skyjet_mode_events WHERE effective_id >= $1', [target.id]);
+    if (mode !== previous.mode) await client.query('INSERT INTO skyjet_mode_events (effective_id, start_ms, mode) VALUES ($1, $2, $3)', [target.id, target.start, mode]);
+    return { effectiveId: target.id, mode };
+  });
+}

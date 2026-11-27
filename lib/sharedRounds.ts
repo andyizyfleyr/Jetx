@@ -1,15 +1,12 @@
-/**
- * Shared, deterministic demo schedule. Every stateless server instance computes
- * the same rounds from UTC time. This public schedule is predictable and must
- * never be used for real-money gaming or treated as provably fair randomness.
- */
-export type SharedRound = { id: number; start: number; flightStart: number; crashAt: number; end: number; crash: number };
+/** Public, deterministic demo schedule. Never suitable for real-money gaming. */
+export type GameMode = 'normal' | 'gentil' | 'mechant' | 'pire';
+export type ModeEvent = { effectiveId: number; start: number; mode: GameMode };
+export type SharedRound = { id: number; start: number; flightStart: number; crashAt: number; end: number; crash: number; mode: GameMode };
 const EPOCH = Date.UTC(2026, 0, 1);
-const SIZE = 65536;
-const WAIT_MS = 5000;
-const CRASH_MS = 3000;
-const starts = new Float64Array(SIZE + 1);
-const crashes = new Float64Array(SIZE);
+const SIZE = 65536, WAIT_MS = 5000, CRASH_MS = 3000;
+const modes: GameMode[] = ['normal', 'gentil', 'mechant', 'pire'];
+const crashes = Object.fromEntries(modes.map(m => [m, new Float64Array(SIZE)])) as Record<GameMode, Float64Array>;
+const starts = Object.fromEntries(modes.map(m => [m, new Float64Array(SIZE + 1)])) as Record<GameMode, Float64Array>;
 function randomForIndex(index: number) {
   let n = (index + 0x6d2b79f5) | 0;
   n = Math.imul(n ^ (n >>> 15), 1 | n);
@@ -17,27 +14,40 @@ function randomForIndex(index: number) {
   return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
 }
 for (let i = 0; i < SIZE; i++) {
-  crashes[i] = Math.max(1, .97 / (1 - randomForIndex(i)));
-  starts[i + 1] = starts[i] + WAIT_MS + Math.log(crashes[i]) / .00006 + CRASH_MS;
+  const base = Math.max(1, .97 / (1 - randomForIndex(i)));
+  // Monotonic transforms preserve the long tail, including values above 1000x.
+  const values: Record<GameMode, number> = { normal: base, gentil: 1 + (base - 1) * 2, mechant: 1 + (base - 1) * .5, pire: 1 + (base - 1) * .2 };
+  for (const mode of modes) {
+    crashes[mode][i] = values[mode];
+    starts[mode][i + 1] = starts[mode][i] + WAIT_MS + Math.log(values[mode]) / .00006 + CRASH_MS;
+  }
 }
-const period = starts[SIZE];
-function makeRound(cycle: number, index: number): SharedRound {
-  const start = EPOCH + cycle * period + starts[index];
-  const flightStart = start + WAIT_MS;
-  const crashAt = flightStart + Math.log(crashes[index]) / .00006;
-  return { id: cycle * SIZE + index, start, flightStart, crashAt, end: crashAt + CRASH_MS, crash: crashes[index] };
+const indexOf = (id: number) => ((id % SIZE) + SIZE) % SIZE;
+function offset(mode: GameMode, id: number) {
+  return Math.floor(id / SIZE) * starts[mode][SIZE] + starts[mode][indexOf(id)];
 }
-function roundById(id: number): SharedRound {
-  const cycle = Math.floor(id / SIZE);
-  const index = ((id % SIZE) + SIZE) % SIZE;
-  return makeRound(cycle, index);
-}
-/** Includes previous rounds for reconnecting clients and future rounds for smooth transitions. */
-export function getSharedSchedule(now: number): SharedRound[] {
-  const cycle = Math.floor((now - EPOCH) / period);
-  const offset = now - EPOCH - cycle * period;
+function idAt(mode: GameMode, virtualTime: number) {
+  const cycle = Math.floor(virtualTime / starts[mode][SIZE]);
+  const within = virtualTime - cycle * starts[mode][SIZE];
   let low = 0, high = SIZE;
-  while (low + 1 < high) { const mid = Math.floor((low + high) / 2); if (starts[mid] <= offset) low = mid; else high = mid; }
-  const id = cycle * SIZE + low;
-  return Array.from({ length: 25 }, (_, i) => roundById(id + i - 20));
+  while (low + 1 < high) { const mid = Math.floor((low + high) / 2); if (starts[mode][mid] <= within) low = mid; else high = mid; }
+  return cycle * SIZE + low;
+}
+const baseline: ModeEvent = { effectiveId: 0, start: EPOCH, mode: 'normal' };
+function anchorForId(id: number, events: ModeEvent[]) {
+  return events.filter(e => e.effectiveId <= id).at(-1) ?? baseline;
+}
+function roundById(id: number, events: ModeEvent[]): SharedRound {
+  const anchor = anchorForId(id, events);
+  const start = anchor.start + offset(anchor.mode, id) - offset(anchor.mode, anchor.effectiveId);
+  const flightStart = start + WAIT_MS;
+  const crash = crashes[anchor.mode][indexOf(id)];
+  const crashAt = flightStart + Math.log(crash) / .00006;
+  return { id, start, flightStart, crashAt, end: crashAt + CRASH_MS, crash, mode: anchor.mode };
+}
+/** Events are ordered by effectiveId and anchored to the unchanged preceding round. */
+export function getSharedSchedule(now: number, events: ModeEvent[] = []): SharedRound[] {
+  const anchor = events.filter(e => e.start <= now).at(-1) ?? baseline;
+  const id = idAt(anchor.mode, offset(anchor.mode, anchor.effectiveId) + now - anchor.start);
+  return Array.from({ length: 25 }, (_, i) => roundById(id + i - 20, events));
 }
