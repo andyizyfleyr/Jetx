@@ -87,7 +87,6 @@ export default function PredictionsPage() {
     <header className="forecast-header">
       <Link className="forecast-back" href="/" aria-label="Retour au jeu"><ArrowLeft size={20}/></Link>
       <Link href="/" className="logo">Sky<span>Jet</span><i>✦</i></Link>
-      <span className="forecast-badge">DÉMO</span>
     </header>
     <section className="forecast-content">
       <section className="mode-controls" aria-label="Réglage des modes">
@@ -98,7 +97,7 @@ export default function PredictionsPage() {
         </div>
         {current && <div className="mode-detail"><>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Touchez à nouveau pour revenir au mode normal.' : ''}</></div>}
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}
-        <p className="mode-disclaimer">Aléatoire : une manche (100–1 000x ou 1,01–2x). Résultats publics et modifiables · Démo.</p>
+        <p className="mode-disclaimer">Aléatoire : une manche (100–1 000x ou 1,01–2x). Résultats publics et modifiables.</p>
         {notice && <div className="mode-notice" role="status">{notice}</div>}
       </section>
       <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div></div>
@@ -116,7 +115,7 @@ export default function PredictionsPage() {
           <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
         </article>) : null}
       </div>
-      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Démo sans argent réel.</span></div>
+      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Sans argent réel.</span></div>
       <Link href="/" className="forecast-play">Retourner au jeu <ArrowUpRight size={18}/></Link>
     </section>
   </main>;
