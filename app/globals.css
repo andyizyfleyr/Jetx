@@ -193,3 +193,25 @@
 .currency-symbol{font-weight:900}
 
 .balance{padding:4px 4px 4px 11px}
+
+/* Desktop-only simulated activity; the mobile controls retain their fixed layout. */
+.desktop-activity{display:none}
+@media(min-width:1000px){
+  .desktop-activity{display:flex;flex:1 0 220px;min-height:220px;flex-direction:column;margin:0 18px 18px;padding:16px 14px 10px;border:1px solid #ffffff14;border-radius:16px;background:linear-gradient(160deg,#252834,#1b1d27);overflow:hidden}
+  .activity-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .activity-heading h2{margin:0;color:#f3f4f8;font-size:14px;font-weight:800}
+  .activity-heading p{margin:4px 0 0;color:#a3a9b7;font-size:10px}
+  .activity-count{white-space:nowrap;color:#b8eccb;background:#64d99019;border:1px solid #64d99032;border-radius:20px;padding:5px 8px;font-size:10px;font-weight:750}
+  .activity-columns,.activity-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(68px,.85fr) minmax(90px,1fr);align-items:center;gap:6px}
+  .activity-columns{color:#9da4b2;font-size:10px;font-weight:750;margin:18px 0 8px;padding:0 7px}
+  .activity-columns span:not(:first-child){text-align:right}
+  .activity-list{min-height:0;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:#515764 transparent}
+  .activity-row{min-height:43px;margin-bottom:5px;padding:6px 7px;border-radius:9px;background:#ffffff08;font-size:11px;color:#d5d9e1;font-variant-numeric:tabular-nums}
+  .activity-player{display:flex;align-items:center;gap:7px;min-width:0;font-weight:700}
+  .activity-player>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .activity-avatar{display:grid;place-items:center;width:26px;height:26px;flex-shrink:0;border-radius:50%;background:#635c78;color:#f8eaff;font-size:11px}
+  .activity-stake,.activity-result{text-align:right;white-space:nowrap}
+  .activity-result{color:#aeb4c1;font-size:10px}.activity-result.won{color:#76e5a0}
+  .activity-result strong,.activity-result small{display:block}.activity-result strong{font-size:11px}.activity-result small{margin-top:2px;color:#a9c9b3;font-size:9px}
+  .activity-empty{color:#aeb4c1;text-align:center;font-size:12px;padding:20px 0}
+}
