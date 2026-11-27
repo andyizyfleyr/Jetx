@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { isValidBetAmount, MIN_BET, QUICK_BETS } from '@/lib/betLimits';
 
 export const BET_COUNT = 2;
 export type Phase = 'WAITING' | 'FLYING' | 'CRASHED';
@@ -15,7 +16,7 @@ type Game = {
   cash: (index: number) => number; cancelAll: () => number; cashAll: () => number; startFlight: () => void; crash: () => void; startWaiting: () => void;
 };
 const names = ['a..7', 'd..4', 'm..9', 'j..2', 's..8', 'k..1', 'b..5', 'r..3', 't..6', 'n..0'];
-export const makePlayers = (): Player[] => Array.from({ length: 50 + Math.floor(Math.random() * 101) }, (_, i) => ({ name: names[i % names.length], stake: [10, 25, 50, 100, 200, 500][Math.floor(Math.random() * 6)], target: 1.05 + Math.random() * 5, cashed: false }));
+export const makePlayers = (): Player[] => Array.from({ length: 50 + Math.floor(Math.random() * 101) }, (_, i) => ({ name: names[i % names.length], stake: QUICK_BETS[Math.floor(Math.random() * QUICK_BETS.length)], target: 1.05 + Math.random() * 5, cashed: false }));
 const initialHistory = [1.00, 2.19, 1.08, 1.20, 35.06, 55.38, 3.94, 1.72, 8.23].map(value => ({ value, time: '--:--' }));
 let feedbackId = 0;
 export const useGame = create<Game>((set, get) => ({
@@ -24,13 +25,14 @@ export const useGame = create<Game>((set, get) => ({
   clearFeedback: id => set(s => s.feedback?.id === id ? { feedback: null } : s),
   syncReady: false, roundId: -1, syncNow: () => false, ping: null,
   phase: 'WAITING', multiplier: 1, countdown: 5, balance: 21329.85,
-  bets: Array.from({ length: BET_COUNT }, () => ({ amount: 100, status: 'empty', lastAmount: 0 })),
-  draftAmounts: Array.from({ length: BET_COUNT }, () => '100'),
+  bets: Array.from({ length: BET_COUNT }, () => ({ amount: MIN_BET, status: 'empty', lastAmount: 0 })),
+  draftAmounts: Array.from({ length: BET_COUNT }, () => String(MIN_BET)),
   history: initialHistory, players: [], online: 2060, autoCash: false, autoTarget: 2, autoPlay: false, sound: true, animations: true,
   set: patch => set(patch),
   place: (index, amount) => { if (!get().syncNow()) return; set(s => {
+    if (!isValidBetAmount(amount)) return s;
     amount = Math.round(amount * 100) / 100;
-    if (!Number.isFinite(amount) || amount < 1 || amount > s.balance || s.bets[index].status !== 'empty') return s;
+    if (amount > s.balance || s.bets[index].status !== 'empty') return s;
     const bets = s.bets.map((b, i) => i === index ? { amount, lastAmount: amount, status: 'queued' as const, roundId: s.phase === 'WAITING' ? s.roundId : s.roundId + 1, result: undefined } : b);
     return { bets, balance: Math.round((s.balance - amount) * 100) / 100 };
   }); },
@@ -40,8 +42,8 @@ export const useGame = create<Game>((set, get) => ({
     const s = get();
     const free = s.bets.map((bet, i) => bet.status === 'empty' ? i : -1).filter(i => i !== -1);
     if (!free.length) return 'none';
+    if (free.some(i => !isValidBetAmount(amounts[i]))) return 'invalid';
     const values = free.map(i => Math.round(amounts[i] * 100) / 100);
-    if (values.some(value => !Number.isFinite(value) || value < 1)) return 'invalid';
     const totalCents = values.reduce((total, value) => total + Math.round(value * 100), 0);
     if (totalCents > Math.round(s.balance * 100)) return 'insufficient';
     set({ balance: (Math.round(s.balance * 100) - totalCents) / 100,
@@ -69,7 +71,7 @@ export const useGame = create<Game>((set, get) => ({
   startWaiting: () => set(s => {
     let balance = s.balance;
     const bets = s.bets.map(b => {
-      if (s.autoPlay && b.status === 'empty' && b.lastAmount > 0 && b.lastAmount <= balance) { balance = Math.round((balance - b.lastAmount) * 100) / 100; return { ...b, amount: b.lastAmount, status: 'queued' as const, result: undefined }; }
+      if (s.autoPlay && b.status === 'empty' && isValidBetAmount(b.lastAmount) && b.lastAmount <= balance) { balance = Math.round((balance - b.lastAmount) * 100) / 100; return { ...b, amount: b.lastAmount, status: 'queued' as const, result: undefined }; }
       return b;
     });
     return { phase: 'WAITING', countdown: 5, multiplier: 1, bets, balance, players: makePlayers(), online: 2050 + Math.floor(Math.random() * 110) };
