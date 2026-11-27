@@ -49,6 +49,10 @@ export default function PredictionsPage() {
   const current = fresh ? snapshot.rounds.find(round => round.start <= serverNow && serverNow < round.end) : undefined;
   const upcoming = current && snapshot ? snapshot.rounds.filter(round => round.id > current.id).slice(0, 4) : [];
 
+  const phase = current ? serverNow < current.flightStart ? 'waiting' : serverNow < current.crashAt ? 'flying' : 'crashed' : null;
+  const phaseLabel = phase === 'waiting' ? 'En attente du décollage' : phase === 'flying' ? 'En vol' : 'Terminée';
+  const flightTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
   return <main className="forecast-page">
     <header className="forecast-header">
       <Link className="forecast-back" href="/" aria-label="Retour au jeu"><ArrowLeft size={20}/></Link>
@@ -58,14 +62,21 @@ export default function PredictionsPage() {
     <section className="forecast-content">
       <div className="forecast-kicker"><Radar size={15}/> MANCHES COMMUNES</div>
       <h1>Les prochains<br/><em>multiplicateurs.</em></h1>
-      <p className="forecast-intro">Découvrez les résultats programmés des prochaines manches de SkyJet.</p>
+      <p className="forecast-intro">Repérez la manche affichée dans le jeu, puis les manches qui suivront.</p>
       <div className="forecast-banner"><div className="forecast-icon"><Sparkles size={19}/></div><div><strong>Un aperçu, pas une prédiction magique</strong><p>Cette démo utilise un calendrier public et prévisible. Les valeurs affichées sont les résultats programmés, pas une prédiction applicable aux autres jeux.</p></div></div>
-      <div className="forecast-section-title"><div><span>À VENIR</span><h2>Prochaines manches</h2></div><div className={`forecast-status ${current ? 'live' : ''}`}><i/>{current ? 'Synchronisé' : 'Synchronisation'}</div></div>
+      <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div><div className={`forecast-status ${current ? 'live' : ''}`}><i/>{current ? 'Synchronisé' : 'Synchronisation'}</div></div>
+      {current ? <article className="forecast-current" aria-label={`Manche affichée dans le jeu numéro ${current.id}`}>
+        <div className="forecast-current-head"><span className="forecast-current-id">MANCHE #{current.id}</span><span className="forecast-current-phase">{phaseLabel}</span></div>
+        <div className="forecast-current-body"><div><strong>{phase === 'crashed' ? 'Résultat final' : 'Résultat final programmé'}</strong><span><Clock3 size={13}/> Décollage {flightTime(current.flightStart)}</span></div><div className="forecast-value">{current.crash.toFixed(2)}<small>x</small></div></div>
+        <p>{phase === 'waiting' ? 'C’est la manche du compte à rebours affiché dans le jeu.' : phase === 'flying' ? 'C’est la manche actuellement en vol dans le jeu.' : 'Cette manche vient de se terminer. La suivante arrive après la pause.'}</p>
+      </article> : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Synchronisation de la manche…'}</div>}
+      <div className="forecast-section-title forecast-upcoming-title"><div><span>APRÈS CETTE MANCHE</span><h2>Manches suivantes</h2></div></div>
+      <p className="forecast-sequence">La première carte ci-dessous correspond à la manche qui suit celle affichée dans le jeu, et non à celle du compte à rebours actuel.</p>
       <div className="forecast-list" aria-live="polite">
         {upcoming.length ? upcoming.map((round, i) => <article className="forecast-card" key={round.id}>
           <div className="forecast-number">{String(i + 1).padStart(2, '0')}</div>
-          <div className="forecast-details"><strong>{i === 0 ? 'Prochaine manche' : `Dans ${i + 1} manches`}</strong><span><Clock3 size={13}/> Départ {new Date(round.flightStart).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span></div>
-          <div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div>
+          <div className="forecast-details"><strong>{i === 0 ? 'Manche suivante' : `Manche +${i + 1}`} · #{round.id}</strong><span><Clock3 size={13}/> Décollage {flightTime(round.flightStart)}</span></div>
+          <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
         </article>) : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Chargement des prochaines manches…'}</div>}
       </div>
       <div className="forecast-footnote"><Info size={16}/><span>Horaires affichés dans votre fuseau horaire. Un léger décalage réseau est possible. Aucun argent réel.</span></div>
