@@ -9,7 +9,7 @@ type Game = {
   feedback: { id: number; text: string; kind: 'info' | 'success' | 'error' } | null; invalidBets: number[];
   notify: (text: string, kind?: 'info' | 'success' | 'error') => void; clearFeedback: (id: number) => void;
   syncReady: boolean; roundId: number; syncNow: () => boolean; ping: number | null;
-  phase: Phase; multiplier: number; countdown: number; balance: number; bets: Bet[];
+  phase: Phase; multiplier: number; countdown: number; balance: number; bets: Bet[]; draftAmounts: string[];
   history: Round[]; players: Player[]; online: number; autoCash: boolean; autoTarget: number; autoPlay: boolean; sound: boolean; animations: boolean;
   set: (patch: Partial<Game>) => void; place: (index: number, amount: number) => void; placeAll: (amounts: number[]) => 'ok' | 'invalid' | 'insufficient' | 'none' | 'offline'; cancel: (index: number) => boolean;
   cash: (index: number) => number; cancelAll: () => number; cashAll: () => number; startFlight: () => void; crash: () => void; startWaiting: () => void;
@@ -25,6 +25,7 @@ export const useGame = create<Game>((set, get) => ({
   syncReady: false, roundId: -1, syncNow: () => false, ping: null,
   phase: 'WAITING', multiplier: 1, countdown: 5, balance: 21329.85,
   bets: Array.from({ length: BET_COUNT }, () => ({ amount: 100, status: 'empty', lastAmount: 0 })),
+  draftAmounts: Array.from({ length: BET_COUNT }, () => '100'),
   history: initialHistory, players: [], online: 2060, autoCash: false, autoTarget: 2, autoPlay: false, sound: true, animations: true,
   set: patch => set(patch),
   place: (index, amount) => { if (!get().syncNow()) return; set(s => {
