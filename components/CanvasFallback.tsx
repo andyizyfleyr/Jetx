@@ -51,7 +51,7 @@ export default function CanvasFallback() {
       const { phase, animations, multiplier } = useGame.getState();
       const moving = animations && !reduced.matches;
       const t = moving ? (now-start)/1000 : 0;
-      const { seconds: travel, ascent, entrance } = flightVisual(multiplier, moving);
+      const { seconds: travel, ascent, x: flightX, y: flightY, rotation: bank } = flightVisual(multiplier, moving);
       if (phase !== previousPhase) { previousPhase = phase; }
       const delta = Math.min(100, now-previousTime); previousTime = now;
       const target = phase === 'CRASHED' ? 1 : 0;
@@ -65,9 +65,9 @@ export default function CanvasFallback() {
       if (cloud.complete && cloud.naturalWidth) for(let i=0;i<5;i++) { const cw=w*(.5+(i%3)*.18), ch=cw*cloud.naturalHeight/cloud.naturalWidth; const x=((i*w*.37-travel*(24+i*9))%(w+cw)+w+cw)%(w+cw)-cw/2; const y=h*(.25+(i%3)*.16)+ascent*h*(.1+i*.025); ctx.save(); ctx.globalAlpha=(1-spaceMix)*[.20,.27,.18,.25,.16][i]; ctx.drawImage(cloud,x-cw/2,y-ch/2,cw,ch); ctx.restore(); }
       for(let i=0;i<5;i++) { const x=w*(.08+i*.22)+Math.sin(t*.3+i)*4-travel*(1+i*.3); const y=h*.27+((travel*(3+i*.5)+i*19)%(h*.25)); parachute(x,y,.42+(i%3)*.1,Math.sin(t*.6+i)*.05); }
       if (phase === 'FLYING' && jet.complete && jet.naturalWidth) {
-        const x=w*(.40+entrance*.10+ascent*.03)+Math.sin(t*.7)*3, y=h*(.44-entrance*.025-ascent*.035)+Math.sin(t*1.2)*2;
+        const x=w*flightX, y=h*flightY;
         const jw=w*.68, jh=jw*jet.naturalHeight/jet.naturalWidth;
-        ctx.save(); ctx.translate(x,y); ctx.rotate(-.09-ascent*.08); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
+        ctx.save(); ctx.translate(x,y); ctx.rotate(bank); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
       }
       ctx.restore();
       ctx.save(); ctx.globalAlpha=spaceMix*.8;
