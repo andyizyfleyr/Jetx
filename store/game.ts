@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 export const BET_COUNT = 2;
 export type Phase = 'WAITING' | 'FLYING' | 'CRASHED';
-export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastAmount: number; roundId?: number; result?: { type: 'won' | 'lost'; amount: number } };
+export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastAmount: number; roundId?: number; result?: { type: 'won' | 'lost'; amount: number; roundId?: number } };
 export type Round = { value: number; time: string };
 export type Player = { name: string; stake: number; target: number; cashed: boolean };
 type Game = {
@@ -60,12 +60,12 @@ export const useGame = create<Game>((set, get) => ({
     const s = get(); const bet = s.bets[index];
     if (s.phase !== 'FLYING' || bet.status !== 'active') return 0;
     const gain = Math.floor(bet.amount * s.multiplier * 100) / 100;
-    set({ balance: Math.round((s.balance + gain) * 100) / 100, bets: s.bets.map((b, i) => i === index ? { ...b, status: 'empty', result: { type: 'won', amount: gain } } : b) }); return gain;
+    set({ balance: Math.round((s.balance + gain) * 100) / 100, bets: s.bets.map((b, i) => i === index ? { ...b, status: 'empty', result: { type: 'won', amount: gain, roundId: b.roundId } } : b) }); return gain;
   },
   cancelAll: () => { if (!get().syncNow()) return 0; return get().bets.reduce((total, b, i) => total + (b.status === 'queued' && get().cancel(i) ? b.amount : 0), 0); },
   cashAll: () => get().bets.reduce((sum, b, i) => sum + (b.status === 'active' ? get().cash(i) : 0), 0),
   startFlight: () => set(s => ({ phase: 'FLYING', multiplier: 1, bets: s.bets.map(b => b.status === 'queued' ? { ...b, status: 'active' } : b) })),
-  crash: () => set(s => ({ phase: 'CRASHED', history: [{ value: s.multiplier, time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }, ...s.history].slice(0, 40), bets: s.bets.map(b => b.status === 'active' ? { ...b, status: 'empty', result: { type: 'lost', amount: b.amount } } : b) })),
+  crash: () => set(s => ({ phase: 'CRASHED', history: [{ value: s.multiplier, time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }, ...s.history].slice(0, 40), bets: s.bets.map(b => b.status === 'active' ? { ...b, status: 'empty', result: { type: 'lost', amount: b.amount, roundId: b.roundId } } : b) })),
   startWaiting: () => set(s => {
     let balance = s.balance;
     const bets = s.bets.map(b => {

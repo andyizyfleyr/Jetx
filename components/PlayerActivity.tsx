@@ -18,16 +18,26 @@ const amount = (value: number) => value.toLocaleString('fr-FR', { minimumFractio
 export default function PlayerActivity() {
   const players = useGame(state => state.players);
   const phase = useGame(state => state.phase);
+  const roundId = useGame(state => state.roundId);
+  const bets = useGame(state => state.bets);
   const desktop = useSyncExternalStore(subscribeDesktop, isDesktop, serverDesktop);
   if (!desktop) return null;
+  const ownBets = bets.map((bet, index) => ({ bet, index })).filter(({ bet }) =>
+    bet.status !== 'empty' || (bet.result && (bet.result.roundId ?? bet.roundId) === roundId));
   // Most recent simulated cash-outs first; the other entries keep their order.
   const rows = players.map((player, index) => ({ player, index }))
     .sort((a, b) => Number(b.player.cashed) - Number(a.player.cashed) || (a.player.cashed ? b.player.target - a.player.target : a.index - b.index));
 
-  return <section className="desktop-activity" aria-label="Activité des joueurs simulés">
-    <div className="activity-heading"><div><h2>Activité des joueurs</h2><p>Joueurs simulés · manche en cours</p></div><span className="activity-count">{players.length} mises</span></div>
+  return <section className="desktop-activity" aria-label="Activité des joueurs">
+    <div className="activity-heading"><div><h2>Activité des joueurs</h2><p>Manche en cours</p></div><span className="activity-count">{players.length + ownBets.length} mises</span></div>
     <div className="activity-columns" aria-hidden="true"><span>Joueur</span><span>Mise</span><span>Résultat</span></div>
     <div className="activity-list">
+      {ownBets.map(({ bet, index }) => <div className="activity-row activity-own" key={`own-${index}`}>
+        <div className="activity-player"><span className="activity-avatar own">V</span><span>Vous</span></div>
+        <span className="activity-stake">{amount(bet.amount)} ₣</span>
+        {bet.status === 'empty' && bet.result?.type === 'won' ? <div className="activity-result won"><strong>+{amount(bet.result.amount)} ₣</strong><small>Encaissée</small></div>
+          : <div className="activity-result"><span>{bet.status === 'empty' ? 'Perdue' : bet.status === 'active' ? 'En vol' : bet.roundId === roundId ? 'En attente' : 'Prochaine manche'}</span></div>}
+      </div>)}
       {rows.length ? rows.map(({ player, index }) => <div className="activity-row" key={index}>
         <div className="activity-player"><span className="activity-avatar">{player.name[0].toUpperCase()}</span><span>{player.name}</span></div>
         <span className="activity-stake">{amount(player.stake)} ₣</span>
