@@ -12,6 +12,8 @@ export function useGameEngine() {
   useEffect(() => {
     let frame = 0, stopped = false, inflight = false, needsSync = true, serverAnchor = 0, perfAnchor = 0;
     let rounds: SharedRound[] = [];
+    let snapshotRoundId: number | undefined;
+    let refresh: () => Promise<void> = async () => {};
     let historyKey = -Infinity, lastTick = -1, lastEngine = 0, reportedOffline = false;
     const controller = new AbortController();
 
@@ -25,7 +27,11 @@ export function useGameEngine() {
       }
       const now = serverAnchor + nowPerf - perfAnchor;
       const round = rounds.find(r => r.start <= now && now < r.end);
-      if (!round) { if (s.syncReady) s.set({ syncReady: false }); return false; }
+      if (!round || round.id !== snapshotRoundId) {
+        if (s.syncReady) s.set({ syncReady: false });
+        void refresh();
+        return false;
+      }
       const phase: Phase = now < round.flightStart ? 'WAITING' : now < round.crashAt ? 'FLYING' : 'CRASHED';
       const multiplier = phase === 'WAITING' ? 1 : phase === 'FLYING' ? Math.exp(.00006 * (now - round.flightStart)) : round.crash;
       const firstSync = s.roundId < 0;
@@ -86,7 +92,7 @@ export function useGameEngine() {
       return true;
     };
     useGame.setState({ syncReady: false, syncNow });
-    const refresh = async () => {
+    refresh = async () => {
       if (inflight || stopped) return;
       inflight = true;
       const before = performance.now();
@@ -97,7 +103,9 @@ export function useGameEngine() {
         const after = performance.now();
         if (stopped || !Number.isFinite(data.serverTime) || !Array.isArray(data.rounds) || !data.rounds.length) return;
         if (document.visibilityState !== 'visible') return;
-        rounds = data.rounds; serverAnchor = data.serverTime + (after - before) / 2; perfAnchor = after; needsSync = false;
+        const authoritativeRound = data.rounds.find(r => r.start <= data.serverTime && data.serverTime < r.end);
+        if (!authoritativeRound) return;
+        rounds = data.rounds; snapshotRoundId = authoritativeRound.id; serverAnchor = data.serverTime + (after - before) / 2; perfAnchor = after; needsSync = false;
         useGame.setState({ ping: Math.round(after - before) });
         syncNow();
       } catch { /* The previous clock remains valid for a short grace period. */ }
