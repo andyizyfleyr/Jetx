@@ -14,7 +14,7 @@ export function useGameEngine() {
     let rounds: SharedRound[] = [];
     let snapshotRoundId: number | undefined;
     let refresh: () => Promise<void> = async () => {};
-    let historyKey = -Infinity, lastTick = -1, reportedOffline = false;
+    let historyKey = -Infinity, lastTick = -1;
     const controller = new AbortController();
 
     const syncNow = (): boolean => {
@@ -23,7 +23,6 @@ export function useGameEngine() {
       if (needsSync || !rounds.length || nowPerf - perfAnchor > MAX_CLOCK_AGE) {
         stopEngine();
         if (s.syncReady) s.set({ syncReady: false });
-        if (rounds.length && !reportedOffline) { reportedOffline = true; s.notify('Connexion perdue : mises suspendues pendant la resynchronisation.', 'error'); }
         return false;
       }
       const now = serverAnchor + nowPerf - perfAnchor;
@@ -77,7 +76,6 @@ export function useGameEngine() {
       if (phase === 'FLYING') players = players.map(p => !p.cashed && multiplier >= p.target ? { ...p, cashed: true } : p);
       s.set({ syncReady: true, roundId: round.id, phase, multiplier, countdown: phase === 'WAITING' ? Math.max(0, Math.ceil((round.flightStart - now) / 1000)) : 0,
         bets, balance, history, players, ...(roundChanged ? { online: 2050 + Math.floor(Math.random() * 110) } : {}) });
-      if (reportedOffline) { reportedOffline = false; s.notify('Manche synchronisée.', 'success'); }
       const notes: string[] = [];
       if (autoCount) { notes.push(`Encaissement auto : $ ${money(autoGain)} à ${s.autoTarget.toFixed(2)}x.`); playSound('cash', s.sound); }
       if (lostCount) notes.push(`${lostCount > 1 ? 'Mises perdues' : 'Mise perdue'} : $ ${money(lostTotal)}.`);
