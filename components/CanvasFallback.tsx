@@ -64,8 +64,8 @@ export default function CanvasFallback() {
       if (phase === 'FLYING' && jet.complete && jet.naturalWidth) {
         const flightTime = moving ? (now-changeTime)/1000 : 3;
         const entrance = Math.min(1,flightTime/1.5);
-        const x=w*(.39+entrance*.1)+Math.sin(t*.7)*4, y=h*(.43-entrance*.035)+Math.sin(t*1.2)*2;
-        const jw=w*.59, jh=jw*jet.naturalHeight/jet.naturalWidth;
+        const x=w*(.39+entrance*.1)+Math.sin(t*.7)*4, y=h*(.43-entrance*.015)+Math.sin(t*1.2)*2;
+        const jw=w*.68, jh=jw*jet.naturalHeight/jet.naturalWidth;
         ctx.save(); ctx.translate(x,y); ctx.rotate(-.1); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
       }
       ctx.restore();
