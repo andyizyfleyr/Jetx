@@ -74,7 +74,7 @@
 /* Keep the betting cards and collective actions together at the bottom. The
    game scene takes the remaining height; only very short screens may scroll. */
 .phone>.game-area{height:auto;min-height:200px;max-height:none;flex:1 1 auto}
-.phone>.lower-content{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.phone .lower-content{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
 .phone .bet-panel{padding:5px 1.5% 7px;border-radius:22px 22px 0 0}
 .phone .bet-panel .panel-controls{height:35px;min-height:35px}
 .phone .bet-panel .bet-grid{gap:5px}
@@ -134,3 +134,57 @@
 .phone .bet-panel .bet-button{margin-top:4px}
 .bet-count-number{display:inline-block;min-width:1.5em;text-align:right;font-variant-numeric:tabular-nums}
 @media(max-height:700px){.phone .bet-panel .bet-card{height:96px}.phone .bet-panel .bet-card:has(.card-error){height:114px}}
+
+/* Keep the original compact mobile layout; larger screens use the available space. */
+.controls-column{display:contents}
+@media (min-width: 600px){
+  .phone{width:min(100%, 1440px)}
+  .phone>.topbar{padding:0 clamp(24px,4vw,48px)}
+  .phone .lower-content,.phone .bulk-fixed{width:min(100%,680px);margin-inline:auto}
+  .phone .bet-panel{padding:10px 16px 12px}
+  .phone .bet-panel .panel-controls{height:44px;min-height:44px;font-size:14px}
+  .phone .bet-panel .bet-grid{gap:10px}
+  .phone .bet-panel .bet-card{height:125px;padding:10px}
+  .phone .bet-panel .bet-card:has(.card-error){height:143px}
+  .phone .bet-panel .amount-control{height:34px}
+  .phone .bet-panel .amount-control button{width:34px;height:34px}
+  .phone .bet-panel .amount-control input{font-size:16px}
+  .phone .bet-panel .quick-bets button{height:24px;font-size:11px}
+  .phone .bet-panel .bet-button{min-height:42px;font-size:18px}
+  .phone .bulk-fixed{padding:8px 16px max(12px,env(safe-area-inset-bottom));max-height:none}
+  .phone .bulk-fixed .all-button{height:52px;min-height:52px}
+  .phone .game-area>.history-wrap{margin:18px 3% 0}
+  .flight-feedback-text{font-size:15px}
+  .forecast-page{width:min(100%,900px)}
+  .forecast-header{height:64px;padding:0 28px}
+  .forecast-content{padding:18px 28px 24px}
+  .mode-controls{padding:14px}
+  .mode-grid{gap:8px}
+  .mode-toggle{min-height:52px;padding:8px 12px}
+  .mode-toggle strong,.random-toggle strong{font-size:13px}
+  .mode-detail,.mode-warning,.mode-notice,.mode-controls .mode-disclaimer{font-size:12px}
+  .forecast-section-title{margin:14px 0 8px}
+  .forecast-section-title h2{font-size:17px}
+  .forecast-current{padding:12px 14px}
+  .forecast-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .forecast-card{padding:10px 12px}
+  .forecast-details strong,.forecast-details span{font-size:12px}
+  .forecast-play{padding:12px}
+}
+@media (min-width: 1000px){
+  .phone{display:grid;grid-template-columns:minmax(0,1fr) clamp(350px,31vw,450px);grid-template-rows:64px minmax(0,1fr);height:100dvh;background:#10131b}
+  .phone>.topbar{grid-column:1 / -1;grid-row:1;height:64px;min-height:64px}
+  .phone>.game-area{grid-column:1;grid-row:2;width:100%;height:100%;min-height:0}
+  .controls-column{grid-column:2;grid-row:2;display:flex;flex-direction:column;min-width:0;min-height:0;overflow-y:auto;overscroll-behavior:contain;background:#191a23;border-left:1px solid #ffffff18}
+  .phone .lower-content{width:100%;margin:0;flex:0 0 auto;overflow:visible}
+  .phone .bet-panel{border:0;border-radius:0;padding:20px 18px 16px}
+  .phone .bet-panel .bet-card{height:140px}
+  .phone .bet-panel .bet-card:has(.card-error){height:158px}
+  .phone .bulk-fixed{width:100%;margin:0;padding:12px 18px 18px;max-height:none;overflow:visible;box-shadow:none}
+  .phone .bulk-fixed .all-button{height:54px;min-height:54px}
+  .game-area .center-display{inset:52% 0 10%}
+  .game-area .multiplier{font-size:clamp(70px,7vw,100px)}
+  .game-area.phase-flying .multiplier{font-size:clamp(70px,7vw,100px)}
+  .game-area.phase-flying .multiplier-wide{font-size:clamp(48px,5vw,70px)}
+  .phone .game-meta{left:3%;right:3%}
+}

@@ -81,10 +81,10 @@ export default function GameCanvas() {
         const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
         flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
         flight.position.set(w*(flightX+escaping*.85),h*(flightY-escaping*.25));
-        flight.rotation=bank; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
+        flight.rotation=bank; plane.width=w > 550 ? Math.min(w*.5,h*.52,360) : w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
         // Flame is a separate, flickering geometry layer, not baked into the jet image.
-        const tail=-plane.width*.47, flicker=moving?Math.sin(travel*21)*w*.014:0;
-        flame.clear().poly([tail+4,-w*.018,tail-w*.24-flicker,0,tail+4,w*.018]).fill({color:0xff6922,alpha:.38}).poly([tail+4,-w*.011,tail-w*.19-flicker,0,tail+4,w*.011]).fill({color:0xffa93d,alpha:.8}).poly([tail+4,-w*.005,tail-w*.11-flicker*.5,0,tail+4,w*.005]).fill({color:0xfff4b0,alpha:.95});
+        const tail=-plane.width*.47, unit=plane.width/.68, flicker=moving?Math.sin(travel*21)*unit*.014:0;
+        flame.clear().poly([tail+4,-unit*.018,tail-unit*.24-flicker,0,tail+4,unit*.018]).fill({color:0xff6922,alpha:.38}).poly([tail+4,-unit*.011,tail-unit*.19-flicker,0,tail+4,unit*.011]).fill({color:0xffa93d,alpha:.8}).poly([tail+4,-unit*.005,tail-unit*.11-flicker*.5,0,tail+4,unit*.005]).fill({color:0xfff4b0,alpha:.95});
       });
     }
     start().catch(() => { cleanup?.(); cleanup = undefined; });
