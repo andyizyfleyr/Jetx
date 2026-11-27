@@ -40,3 +40,5 @@ Un changement s’applique à une manche future, indiquée sur la page ; un dél
 ### Écran actif
 
 Sur la page de jeu, SkyJet demande au navigateur de maintenir l’écran allumé (Screen Wake Lock API). Le verrou est libéré hors de la page ou lorsque l’onglet est masqué, puis redemandé au retour. Cette fonctionnalité dépend de la compatibilité du navigateur, de HTTPS et des réglages de l’appareil ; le navigateur peut la refuser, notamment en mode économie d’énergie.
+
+Les deux boutons aléatoires programment un seul résultat partagé : de 100 à 1 000x ou de 1,01 à 2x, au centième. La manche ciblée est affichée et le mode prévu reprend ensuite. Un autre visiteur peut modifier une programmation encore à venir. Ces résultats restent publics et ne conviennent pas à de l’argent réel.
