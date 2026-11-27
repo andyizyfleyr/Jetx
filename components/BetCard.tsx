@@ -16,7 +16,7 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
     if (!Number.isFinite(value) || value < 1) { setError('Minimum : $ 1.00'); return; }
     if (value > balance) { setError('Solde insuffisant'); return; }
     place(index, value); setError('');
-    if (useGame.getState().bets[index].status === 'queued') notify(`Mise ${index + 1} : $ ${money(useGame.getState().bets[index].amount)} placée ${phase === 'WAITING' ? 'pour cette manche' : 'pour la prochaine manche'}.`);
+    if (useGame.getState().bets[index].status === 'queued') notify(`Mise de $ ${money(useGame.getState().bets[index].amount)} placée ${phase === 'WAITING' ? 'pour cette manche' : 'pour la prochaine manche'}.`);
   };
   return <motion.div initial={false} animate={{ opacity: 1 }} className={`bet-card ${bet.status} ${invalid && bet.status === 'empty' ? 'invalid-bet' : ''}`}>
     {bet.status === 'empty' ? <>
@@ -32,7 +32,7 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
     </> : <>
       <div className="bet-caption">{bet.status === 'active' ? 'Vous gagnez' : phase === 'WAITING' ? 'Mise placée · cette manche' : 'En attente de la prochaine manche'}</div>
       <div className="bet-value">$ {money(bet.status === 'active' ? Math.floor(bet.amount * multiplier * 100) / 100 : bet.amount)}</div>
-      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} onClick={() => { if (bet.status === 'active') { const gain = cash(index); if (gain) { playSound('cash', sound); notify(`Mise ${index + 1} encaissée : $ ${money(gain)} à ${multiplier.toFixed(2)}x.`, 'success'); } } else { cancel(index); notify(`Mise ${index + 1} annulée : $ ${money(bet.amount)} remboursés.`, 'success'); } }}>{bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
+      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} onClick={() => { if (bet.status === 'active') { const gain = cash(index); if (gain) { playSound('cash', sound); notify(`Mise encaissée : $ ${money(gain)} à ${multiplier.toFixed(2)}x.`, 'success'); } } else { cancel(index); notify(`Mise annulée : $ ${money(bet.amount)} remboursés.`, 'success'); } }}>{bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
     </>}
   </motion.div>;
 }

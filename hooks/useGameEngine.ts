@@ -22,7 +22,7 @@ export function useGameEngine() {
           const lost = s.bets.map((bet, i) => bet.status === 'active' ? i + 1 : 0).filter(Boolean);
           const total = s.bets.reduce((sum, bet) => sum + (bet.status === 'active' ? bet.amount : 0), 0);
           s.set({ multiplier: crashPoint }); s.crash(); playSound('crash', s.sound);
-          if (lost.length) s.notify(`${lost.length > 1 ? 'Mises' : 'Mise'} ${lost.join(', ')} perdue${lost.length > 1 ? 's' : ''} : $ ${total.toFixed(2)}.`, 'error');
+          if (lost.length) s.notify(`${lost.length > 1 ? 'Mises perdues' : 'Mise perdue'} : $ ${total.toFixed(2)}.`, 'error');
         }
         else {
           const players = s.players.map(p => !p.cashed && multiplier >= p.target ? { ...p, cashed: true } : p);
@@ -37,8 +37,8 @@ export function useGameEngine() {
           const next = useGame.getState();
           const placed = eligible.filter(i => next.bets[i].status === 'queued');
           const skipped = eligible.filter(i => next.bets[i].status === 'empty');
-          const replay = placed.length ? `Jeu auto : mise${placed.length > 1 ? 's' : ''} ${placed.map(i => i + 1).join(', ')} replacée${placed.length > 1 ? 's' : ''}.` : '';
-          const insufficient = skipped.length ? ` Solde insuffisant pour ${skipped.length > 1 ? 'les mises' : 'la mise'} ${skipped.map(i => i + 1).join(', ')}.` : '';
+          const replay = placed.length ? `Jeu auto : mise${placed.length > 1 ? 's' : ''} replacée${placed.length > 1 ? 's' : ''}.` : '';
+          const insufficient = skipped.length ? ' Solde insuffisant pour certaines mises.' : '';
           next.notify((replay + insufficient).trim(), skipped.length ? 'error' : 'info');
         }
       }
