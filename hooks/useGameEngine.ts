@@ -18,14 +18,30 @@ export function useGameEngine() {
         if (elapsed >= 5000) { crashPoint = Math.min(1000, Math.max(1, .97 / (1 - Math.random()))); s.startFlight(); }
       } else if (s.phase === 'FLYING') {
         const multiplier = Math.exp(.00006 * elapsed);
-        if (multiplier >= crashPoint) { s.set({ multiplier: crashPoint }); s.crash(); playSound('crash', s.sound); }
+        if (multiplier >= crashPoint) {
+          const lost = s.bets.map((bet, i) => bet.status === 'active' ? i + 1 : 0).filter(Boolean);
+          const total = s.bets.reduce((sum, bet) => sum + (bet.status === 'active' ? bet.amount : 0), 0);
+          s.set({ multiplier: crashPoint }); s.crash(); playSound('crash', s.sound);
+          if (lost.length) s.notify(`${lost.length > 1 ? 'Mises' : 'Mise'} ${lost.join(', ')} perdue${lost.length > 1 ? 's' : ''} : $ ${total.toFixed(2)}.`, 'error');
+        }
         else {
           const players = s.players.map(p => !p.cashed && multiplier >= p.target ? { ...p, cashed: true } : p);
           s.set({ multiplier, players });
-          if (s.autoCash && multiplier >= s.autoTarget) { const gain = useGame.getState().cashAll(); if (gain) playSound('cash', s.sound); }
+          if (s.autoCash && multiplier >= s.autoTarget) { const current = useGame.getState(); const count = current.bets.filter(b => b.status === 'active').length; const gain = current.cashAll(); if (gain) { playSound('cash', s.sound); current.notify(`Encaissement auto : ${count} mise${count > 1 ? 's' : ''}, $ ${gain.toFixed(2)} à ${multiplier.toFixed(2)}x.`, 'success'); } }
           if (now - lastEngine > 800) { lastEngine = now; playSound('engine', s.sound); }
         }
-      } else if (elapsed >= 3000) s.startWaiting();
+      } else if (elapsed >= 3000) {
+        const eligible = s.autoPlay ? s.bets.map((bet, i) => bet.status === 'empty' && bet.lastAmount > 0 ? i : -1).filter(i => i >= 0) : [];
+        s.startWaiting();
+        if (eligible.length) {
+          const next = useGame.getState();
+          const placed = eligible.filter(i => next.bets[i].status === 'queued');
+          const skipped = eligible.filter(i => next.bets[i].status === 'empty');
+          const replay = placed.length ? `Jeu auto : mise${placed.length > 1 ? 's' : ''} ${placed.map(i => i + 1).join(', ')} replacée${placed.length > 1 ? 's' : ''}.` : '';
+          const insufficient = skipped.length ? ` Solde insuffisant pour ${skipped.length > 1 ? 'les mises' : 'la mise'} ${skipped.map(i => i + 1).join(', ')}.` : '';
+          next.notify((replay + insufficient).trim(), skipped.length ? 'error' : 'info');
+        }
+      }
       frame = requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop); return () => cancelAnimationFrame(frame);

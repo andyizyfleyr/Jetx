@@ -5,6 +5,8 @@ export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastA
 export type Round = { value: number; time: string };
 export type Player = { name: string; stake: number; target: number; cashed: boolean };
 type Game = {
+  feedback: { id: number; text: string; kind: 'info' | 'success' | 'error' } | null; invalidBets: number[];
+  notify: (text: string, kind?: 'info' | 'success' | 'error') => void; clearFeedback: (id: number) => void;
   phase: Phase; multiplier: number; countdown: number; balance: number; bets: Bet[];
   history: Round[]; players: Player[]; online: number; autoCash: boolean; autoTarget: number; autoPlay: boolean; sound: boolean; animations: boolean;
   set: (patch: Partial<Game>) => void; place: (index: number, amount: number) => void; placeAll: (amounts: number[]) => 'ok' | 'invalid' | 'insufficient' | 'none'; cancel: (index: number) => void;
@@ -13,7 +15,11 @@ type Game = {
 const names = ['a..7', 'd..4', 'm..9', 'j..2', 's..8', 'k..1', 'b..5', 'r..3', 't..6', 'n..0'];
 const makePlayers = (): Player[] => Array.from({ length: 50 + Math.floor(Math.random() * 101) }, (_, i) => ({ name: names[i % names.length], stake: [10, 25, 50, 100, 200, 500][Math.floor(Math.random() * 6)], target: 1.05 + Math.random() * 5, cashed: false }));
 const initialHistory = [1.00, 2.19, 1.08, 1.20, 35.06, 55.38, 3.94, 1.72, 8.23].map(value => ({ value, time: '--:--' }));
+let feedbackId = 0;
 export const useGame = create<Game>((set, get) => ({
+  feedback: null, invalidBets: [],
+  notify: (text, kind = 'info') => set({ feedback: { id: ++feedbackId, text, kind } }),
+  clearFeedback: id => set(s => s.feedback?.id === id ? { feedback: null } : s),
   phase: 'WAITING', multiplier: 1, countdown: 5, balance: 21329.85,
   bets: Array.from({ length: 4 }, () => ({ amount: 100, status: 'empty', lastAmount: 0 })),
   history: initialHistory, players: [], online: 2060, autoCash: false, autoTarget: 2, autoPlay: false, sound: true, animations: true,

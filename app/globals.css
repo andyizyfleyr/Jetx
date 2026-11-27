@@ -97,3 +97,11 @@
 .phone .game-area>.history-wrap{margin-top:10px}
 @media(max-width:370px){.phone>.topbar{padding:0 3.5%}}
 @media(max-height:700px){.phone>.topbar{height:56px;min-height:56px}}
+/* Feedback remains close to the fixed actions without covering the aircraft. */
+.bulk-fixed .bulk-message{color:#e7eaf2;font-size:11px;line-height:1.35;text-align:center}
+.bulk-fixed .feedback-success{color:#9ff0b8}.bulk-fixed .feedback-error{color:#ffafba}
+.bet-panel .invalid-bet{outline:2px solid #ff7e91;outline-offset:-2px}.bet-panel .invalid-bet input{color:#ffc5ce}
+.balance-amount{display:inline-block;animation:balance-feedback .7s ease-out}
+@keyframes balance-feedback{0%{color:#ffe069;transform:scale(1.06)}100%{color:#fff;transform:scale(1)}}
+@media(prefers-reduced-motion:reduce){.balance-amount{animation:none}}
+.bulk-fixed .bulk-message:not(:empty){margin:0 4px 6px}
