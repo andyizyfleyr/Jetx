@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export type Phase = 'WAITING' | 'FLYING' | 'CRASHED';
-export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastAmount: number };
+export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastAmount: number; result?: { type: 'won' | 'lost'; amount: number } };
 export type Round = { value: number; time: string };
 export type Player = { name: string; stake: number; target: number; cashed: boolean };
 type Game = {
@@ -21,7 +21,7 @@ export const useGame = create<Game>((set, get) => ({
   place: (index, amount) => set(s => {
     amount = Math.round(amount * 100) / 100;
     if (!Number.isFinite(amount) || amount < 1 || amount > s.balance || s.bets[index].status !== 'empty') return s;
-    const bets = s.bets.map((b, i) => i === index ? { amount, lastAmount: amount, status: 'queued' as const } : b);
+    const bets = s.bets.map((b, i) => i === index ? { amount, lastAmount: amount, status: 'queued' as const, result: undefined } : b);
     return { bets, balance: Math.round((s.balance - amount) * 100) / 100 };
   }),
   cancel: index => set(s => {
@@ -32,16 +32,16 @@ export const useGame = create<Game>((set, get) => ({
     const s = get(); const bet = s.bets[index];
     if (s.phase !== 'FLYING' || bet.status !== 'active') return 0;
     const gain = Math.floor(bet.amount * s.multiplier * 100) / 100;
-    set({ balance: Math.round((s.balance + gain) * 100) / 100, bets: s.bets.map((b, i) => i === index ? { ...b, status: 'empty' } : b) }); return gain;
+    set({ balance: Math.round((s.balance + gain) * 100) / 100, bets: s.bets.map((b, i) => i === index ? { ...b, status: 'empty', result: { type: 'won', amount: gain } } : b) }); return gain;
   },
   cancelAll: () => get().bets.forEach((b, i) => { if (b.status === 'queued') get().cancel(i); }),
   cashAll: () => get().bets.reduce((sum, b, i) => sum + (b.status === 'active' ? get().cash(i) : 0), 0),
   startFlight: () => set(s => ({ phase: 'FLYING', multiplier: 1, bets: s.bets.map(b => b.status === 'queued' ? { ...b, status: 'active' } : b) })),
-  crash: () => set(s => ({ phase: 'CRASHED', history: [{ value: s.multiplier, time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }, ...s.history].slice(0, 40), bets: s.bets.map(b => b.status === 'active' ? { ...b, status: 'empty' } : b) })),
+  crash: () => set(s => ({ phase: 'CRASHED', history: [{ value: s.multiplier, time: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }, ...s.history].slice(0, 40), bets: s.bets.map(b => b.status === 'active' ? { ...b, status: 'empty', result: { type: 'lost', amount: b.amount } } : b) })),
   startWaiting: () => set(s => {
     let balance = s.balance;
     const bets = s.bets.map(b => {
-      if (s.autoPlay && b.status === 'empty' && b.lastAmount > 0 && b.lastAmount <= balance) { balance = Math.round((balance - b.lastAmount) * 100) / 100; return { ...b, amount: b.lastAmount, status: 'queued' as const }; }
+      if (s.autoPlay && b.status === 'empty' && b.lastAmount > 0 && b.lastAmount <= balance) { balance = Math.round((balance - b.lastAmount) * 100) / 100; return { ...b, amount: b.lastAmount, status: 'queued' as const, result: undefined }; }
       return b;
     });
     return { phase: 'WAITING', countdown: 5, multiplier: 1, bets, balance, players: makePlayers(), online: 2050 + Math.floor(Math.random() * 110) };
