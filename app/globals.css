@@ -71,3 +71,23 @@
 @media(max-height:700px){.bulk-fixed .all-button{height:46px;min-height:46px}.bulk-fixed .all-button strong{font-size:15px}.bulk-fixed .all-button span{font-size:11px}}
 /* Actions end the screen; keep them clear of the device's bottom safe area. */
 .bulk-fixed{padding-bottom:max(10px,env(safe-area-inset-bottom))}
+/* Keep the betting cards and collective actions together at the bottom. The
+   game scene takes the remaining height; only very short screens may scroll. */
+.phone>.game-area{height:auto;min-height:200px;max-height:none;flex:1 1 auto}
+.phone>.lower-content{flex:0 1 auto;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.phone .bet-panel{padding:5px 1.5% 7px;border-radius:22px 22px 0 0}
+.phone .bet-panel .panel-controls{height:35px;min-height:35px}
+.phone .bet-panel .bet-grid{gap:5px}
+.phone .bet-panel .bet-card{height:98px;padding:6px;border-radius:12px}
+.phone .bet-panel .bet-card:has(.card-error){height:116px}
+.phone .bet-panel .bet-button{min-height:38px;border-radius:15px;font-size:16px}
+.phone .bet-panel .bet-value{font-size:17px}
+.phone .bet-panel .bet-caption{font-size:10px}
+.phone .bet-panel .amount-control{height:25px}
+.phone .bet-panel .amount-control button{width:25px;height:25px}
+.phone .bet-panel .quick-bets button{height:18px}
+.phone .bulk-fixed{padding:6px 4% max(8px,env(safe-area-inset-bottom));max-height:30dvh}
+.phone .bulk-fixed .all-button{height:47px;min-height:47px}
+.phone .bulk-fixed .all-button strong{font-size:16px}
+.phone .bulk-fixed .all-button span{font-size:12px}
+@media(max-height:700px){.phone>.game-area{min-height:180px}.phone .bet-panel .bet-card{height:92px}.phone .bet-panel .bet-card:has(.card-error){height:110px}.phone .bet-panel .bet-button{min-height:34px;font-size:15px}.phone .bulk-fixed .all-button{height:42px;min-height:42px}.phase-flying .multiplier{font-size:54px}.phase-flying .multiplier-wide{font-size:43px}}
