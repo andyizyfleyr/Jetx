@@ -15,7 +15,8 @@ export default function BulkActions({ amounts }: { amounts: string[] }) {
     const invalid = bets.map((bet, i) => bet.status === 'empty' && (!Number.isFinite(values[i]) || Math.round(values[i] * 100) < 100) ? i : -1).filter(i => i >= 0);
     set({ invalidBets: invalid });
     const result = placeAll(values);
-    const text = result === 'offline' ? 'Synchronisation indisponible : réessayez.' : result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : minimum $ 1.00.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
+    if (result === 'offline') return;
+    const text = result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : minimum $ 1.00.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
     notify(text, result === 'ok' ? 'success' : 'error');
   };
   return <div className="bulk-fixed">

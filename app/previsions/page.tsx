@@ -10,7 +10,6 @@ type Snapshot = { serverTime: number; rounds: SharedRound[]; receivedAt: number;
 export default function PredictionsPage() {
   const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
   const [now, setNow] = useState(0);
-  const [error, setError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
@@ -32,9 +31,8 @@ export default function PredictionsPage() {
         if (!stopped && document.visibilityState === 'visible') {
           setSnapshot({ serverTime: data.serverTime + (receivedAt - started) / 2, rounds: data.rounds, receivedAt, controlsAvailable: data.controlsAvailable, scheduled: data.scheduled });
           setNow(receivedAt);
-          setError(false);
         }
-      } catch { if (!stopped) setError(true); }
+      } catch { /* Retry on the next refresh. */ }
       finally { pending = false; }
     }
     const tick = window.setInterval(() => setNow(performance.now()), 250);
@@ -98,17 +96,17 @@ export default function PredictionsPage() {
           <button type="button" className="mode-toggle random-toggle" disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectRandom('grand_aleatoire')}><strong>Très grand x aléatoire</strong></button>
           <button type="button" className="mode-toggle random-toggle" disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectRandom('petit_aleatoire')}><strong>Petit x aléatoire</strong></button>
         </div>
-        <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Touchez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
+        {current && <div className="mode-detail"><>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Touchez à nouveau pour revenir au mode normal.' : ''}</></div>}
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}
         <p className="mode-disclaimer">Aléatoire : une manche (100–1 000x ou 1,01–2x). Résultats publics et modifiables · Démo.</p>
         {notice && <div className="mode-notice" role="status">{notice}</div>}
       </section>
-      <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div><div className={`forecast-status ${current ? 'live' : ''}`}><i/>{current ? 'Synchronisé' : 'Synchronisation'}</div></div>
+      <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div></div>
       {current ? <article className="forecast-current" aria-label={`Manche affichée dans le jeu numéro ${current.id}`}>
         <div className="forecast-current-head"><span className="forecast-current-id">MANCHE #{current.id}</span><span className="forecast-current-phase">{phaseLabel} · {modeLabels[current.mode]}</span></div>
         <div className="forecast-current-body"><div><strong>{phase === 'crashed' ? 'Résultat final' : 'Résultat final programmé'}</strong><span><Clock3 size={13}/> Décollage {flightTime(current.flightStart)}</span></div><div className="forecast-value">{current.crash.toFixed(2)}<small>x</small></div></div>
         <p>{phase === 'waiting' ? 'C’est la manche du compte à rebours affiché dans le jeu.' : phase === 'flying' ? 'C’est la manche actuellement en vol dans le jeu.' : 'Cette manche vient de se terminer. La suivante arrive après la pause.'}</p>
-      </article> : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Synchronisation de la manche…'}</div>}
+      </article> : null}
       <div className="forecast-section-title forecast-upcoming-title"><div><span>APRÈS CETTE MANCHE</span><h2>Manches suivantes</h2></div></div>
       <p className="forecast-sequence">Après la manche affichée dans le jeu.</p>
       <div className="forecast-list" aria-live="polite">
@@ -116,9 +114,9 @@ export default function PredictionsPage() {
           <div className="forecast-number">{String(i + 1).padStart(2, '0')}</div>
           <div className="forecast-details"><strong>{i === 0 ? 'Manche suivante' : `Manche +${i + 1}`} · #{round.id}</strong><span><Clock3 size={13}/> Décollage {flightTime(round.flightStart)} · {round.oneShot ? 'Aléatoire · une manche' : modeLabels[round.mode]}</span></div>
           <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
-        </article>) : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Chargement des prochaines manches…'}</div>}
+        </article>) : null}
       </div>
-      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Décalage réseau possible · Démo sans argent réel.</span></div>
+      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Démo sans argent réel.</span></div>
       <Link href="/" className="forecast-play">Retourner au jeu <ArrowUpRight size={18}/></Link>
     </section>
   </main>;
