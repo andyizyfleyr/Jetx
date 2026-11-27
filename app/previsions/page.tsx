@@ -81,9 +81,9 @@ export default function PredictionsPage() {
     <section className="forecast-content">
       <section className="mode-controls" aria-label="Réglage des modes">
         <div className="mode-grid" role="group" aria-label="Choisir le mode des prochaines manches">
-          {(['beaucoup_plus_gentil', 'plus_gentil', 'gentil', 'mechant', 'pire', 'plus_pire', 'beaucoup_plus_pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><span>{mode.includes('gentil') ? 'Plus hauts' : 'Plus bas'}</span><i aria-hidden="true"/></button>)}
+          {(['beaucoup_plus_gentil', 'plus_gentil', 'gentil', 'mechant', 'pire', 'plus_pire', 'beaucoup_plus_pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><i aria-hidden="true"/></button>)}
         </div>
-        <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Appuyez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
+        <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Touchez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}
         <p className="mode-disclaimer">Les résultats peuvent changer selon le mode choisi par les visiteurs. Démo prévisible, sans argent réel.</p>
         {notice && <div className="mode-notice" role="status">{notice}</div>}
@@ -95,7 +95,7 @@ export default function PredictionsPage() {
         <p>{phase === 'waiting' ? 'C’est la manche du compte à rebours affiché dans le jeu.' : phase === 'flying' ? 'C’est la manche actuellement en vol dans le jeu.' : 'Cette manche vient de se terminer. La suivante arrive après la pause.'}</p>
       </article> : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Synchronisation de la manche…'}</div>}
       <div className="forecast-section-title forecast-upcoming-title"><div><span>APRÈS CETTE MANCHE</span><h2>Manches suivantes</h2></div></div>
-      <p className="forecast-sequence">Ces manches viennent après celle affichée dans le jeu.</p>
+      <p className="forecast-sequence">Après la manche affichée dans le jeu.</p>
       <div className="forecast-list" aria-live="polite">
         {upcoming.length ? upcoming.map((round, i) => <article className="forecast-card" key={round.id}>
           <div className="forecast-number">{String(i + 1).padStart(2, '0')}</div>
@@ -103,7 +103,7 @@ export default function PredictionsPage() {
           <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
         </article>) : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Chargement des prochaines manches…'}</div>}
       </div>
-      <div className="forecast-footnote"><Info size={16}/><span>Horaires affichés dans votre fuseau horaire. Un léger décalage réseau est possible. Aucun argent réel.</span></div>
+      <div className="forecast-footnote"><Info size={16}/><span>Heures locales · Décalage réseau possible · Démo sans argent réel.</span></div>
       <Link href="/" className="forecast-play">Retourner au jeu <ArrowUpRight size={18}/></Link>
     </section>
   </main>;
