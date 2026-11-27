@@ -24,3 +24,7 @@ store/        état et opérations de jeu Zustand
 Le solde et les mises sont fictifs et réinitialisés au rechargement. Les autres joueurs et leur nombre sont simulés, et ne sont pas synchronisés. Le ping est la durée aller-retour mesurée vers la route de synchronisation. Les connexions peuvent introduire un léger décalage ; les mises sont suspendues lorsque la synchronisation est indisponible.
 
 Le calendrier des manches est déterministe, public et périodique pour permettre la synchronisation sans base de données. Les résultats futurs sont donc prévisibles : ce mécanisme est strictement réservé à la démonstration, non sécurisé et inadapté à tout jeu en argent réel.
+
+### Prochaines manches
+
+La page `/previsions`, accessible depuis le menu, affiche les quatre résultats programmés après la manche en cours. Elle lit le même calendrier public que le jeu et se resynchronise régulièrement. Ce ne sont pas des prédictions de jeux externes : les résultats de cette démo sont calculés à l’avance et prévisibles.
