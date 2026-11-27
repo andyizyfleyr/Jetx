@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 import { useGame, makePlayers, type Bet, type Phase } from '@/store/game';
-import { playSound } from '@/lib/audio';
+import { playSound, setAudioEnabled, stopEngine, unlockAudio, updateEngine } from '@/lib/audio';
 import type { SharedRound } from '@/lib/sharedRounds';
 
 const MAX_CLOCK_AGE = 20000;
@@ -14,13 +14,14 @@ export function useGameEngine() {
     let rounds: SharedRound[] = [];
     let snapshotRoundId: number | undefined;
     let refresh: () => Promise<void> = async () => {};
-    let historyKey = -Infinity, lastTick = -1, lastEngine = 0, reportedOffline = false;
+    let historyKey = -Infinity, lastTick = -1, reportedOffline = false;
     const controller = new AbortController();
 
     const syncNow = (): boolean => {
       const s = useGame.getState();
       const nowPerf = performance.now();
       if (needsSync || !rounds.length || nowPerf - perfAnchor > MAX_CLOCK_AGE) {
+        stopEngine();
         if (s.syncReady) s.set({ syncReady: false });
         if (rounds.length && !reportedOffline) { reportedOffline = true; s.notify('Connexion perdue : mises suspendues pendant la resynchronisation.', 'error'); }
         return false;
@@ -28,6 +29,7 @@ export function useGameEngine() {
       const now = serverAnchor + nowPerf - perfAnchor;
       const round = rounds.find(r => r.start <= now && now < r.end);
       if (!round || round.id !== snapshotRoundId) {
+        stopEngine();
         if (s.syncReady) s.set({ syncReady: false });
         void refresh();
         return false;
@@ -88,7 +90,7 @@ export function useGameEngine() {
         const tick = Math.ceil((round.flightStart - now) / 1000);
         if (tick !== lastTick && tick > 0) { lastTick = tick; playSound('tick', s.sound); }
       } else lastTick = -1;
-      if (phase === 'FLYING' && nowPerf - lastEngine > 800) { lastEngine = nowPerf; playSound('engine', s.sound); }
+      updateEngine(s.sound && phase === 'FLYING' && document.visibilityState === 'visible', multiplier);
       return true;
     };
     useGame.setState({ syncReady: false, syncNow });
@@ -111,13 +113,17 @@ export function useGameEngine() {
       } catch { /* The previous clock remains valid for a short grace period. */ }
       finally { inflight = false; }
     };
-    const onVisibility = () => { needsSync = true; useGame.setState({ syncReady: false }); if (document.visibilityState === 'visible') void refresh(); };
+    const unlock = () => { unlockAudio(); setAudioEnabled(useGame.getState().sound); };
+    window.addEventListener('pointerdown', unlock, true);
+    window.addEventListener('keydown', unlock, true);
+    const unsubscribeSound = useGame.subscribe((state, previous) => { if (state.sound !== previous.sound) setAudioEnabled(state.sound); });
+    const onVisibility = () => { stopEngine(); needsSync = true; useGame.setState({ syncReady: false }); if (document.visibilityState === 'visible') void refresh(); };
     document.addEventListener('visibilitychange', onVisibility);
     window.addEventListener('focus', onVisibility);
     void refresh();
     const interval = window.setInterval(() => { if (document.visibilityState === 'visible') void refresh(); }, 3000);
     const loop = () => { if (!stopped) { syncNow(); frame = requestAnimationFrame(loop); } };
     frame = requestAnimationFrame(loop);
-    return () => { stopped = true; controller.abort(); clearInterval(interval); cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('focus', onVisibility); useGame.setState({ syncReady: false, syncNow: () => false }); };
+    return () => { stopped = true; stopEngine(); unsubscribeSound(); window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); controller.abort(); clearInterval(interval); cancelAnimationFrame(frame); document.removeEventListener('visibilitychange', onVisibility); window.removeEventListener('focus', onVisibility); useGame.setState({ syncReady: false, syncNow: () => false }); };
   }, []);
 }
