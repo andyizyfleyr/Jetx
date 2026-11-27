@@ -66,7 +66,7 @@ export default function CanvasFallback() {
       for(let i=0;i<5;i++) { const x=((w*(.08+i*.22)+Math.sin(travel*.3+i)*4-travel*(1+i*.3)+w*.1)%(w*1.2)+w*1.2)%(w*1.2)-w*.1; const y=h*.27+((travel*(3+i*.5)+i*19)%(h*.25)); parachute(x,y,.42+(i%3)*.1,Math.sin(travel*.6+i)*.05); }
       if (phase === 'FLYING' && jet.complete && jet.naturalWidth) {
         const x=w*flightX, y=h*flightY;
-        const jw=w*.68, jh=jw*jet.naturalHeight/jet.naturalWidth;
+        const jw=w > 550 ? Math.min(w*.5,h*.52,360) : w*.68, jh=jw*jet.naturalHeight/jet.naturalWidth;
         ctx.save(); ctx.translate(x,y); ctx.rotate(bank); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
       }
       ctx.restore();
