@@ -63,7 +63,7 @@ export default function GameCanvas() {
         const elapsed = moving ? (now-phaseStart)/1000 : 10;
         spaceMix += ((phase === 'CRASHED' ? 1 : 0)-spaceMix) * (moving ? Math.min(1,delta*3) : 1);
         const w=app.screen.width, h=app.screen.height;
-        const { seconds: travel, ascent, x: flightX, y: flightY, rotation: bank } = flightVisual(state.multiplier, moving);
+        const { distance: travel, ascent, x: flightX, y: flightY, rotation: bank } = flightVisual(state.multiplier, moving);
         // The camera follows the same flight timeline as the aircraft. Overscan
         // keeps the background covering the viewport as altitude changes.
         const cover = (sprite: InstanceType<typeof Sprite>, isSky: boolean) => {
@@ -76,14 +76,14 @@ export default function GameCanvas() {
         clouds.alpha = 1-spaceMix;
         cloudSprites.forEach((sprite,i) => { const cw=w*(.5+(i%3)*.18); sprite.width=cw; sprite.height=cw*cloudTexture.height/cloudTexture.width; const distance = travel*(24+i*9); sprite.x=((i*w*.37-distance)%(w+cw)+w+cw)%(w+cw)-cw/2; sprite.y=h*(.25+(i%3)*.16)+ascent*h*(.1+i*.025); });
         parachutes.alpha=1-spaceMix;
-        divers.forEach((diver,i)=>{diver.scale.set(.45+(i%3)*.12); diver.x=w*(.08+i*.21)+Math.sin(clock*.4+i)*5-travel*(1+i*.3); diver.y=h*.25+((travel*(3+i*.5)+i*19)%(h*.3)); diver.rotation=Math.sin(clock*.6+i)*.06;});
+        divers.forEach((diver,i)=>{diver.scale.set(.45+(i%3)*.12); diver.x=((w*(.08+i*.21)+Math.sin(travel*.4+i)*5-travel*(1+i*.3)+w*.1)%(w*1.2)+w*1.2)%(w*1.2)-w*.1; diver.y=h*.25+((travel*(3+i*.5)+i*19)%(h*.3)); diver.rotation=Math.sin(travel*.6+i)*.06;});
         stars.alpha=spaceMix; astronauts.forEach((figure,i)=>{figure.position.set(w*(.12+i*.38)+Math.sin(clock*.35+i)*7,h*(.31+i*.1)+Math.cos(clock*.3+i)*5); figure.scale.set(.45+i*.1); figure.rotation=.3+i*.6+Math.sin(clock*.3)*.1;}); sparks.forEach((dot,i)=>{dot.x=(i*83+17)%w; dot.y=(i*53+19)%h; dot.alpha=.25+.5*(.5+.5*Math.sin(clock*1.1+i));});
         const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
         flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
         flight.position.set(w*(flightX+escaping*.85),h*(flightY-escaping*.25));
         flight.rotation=bank; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
         // Flame is a separate, flickering geometry layer, not baked into the jet image.
-        const tail=-plane.width*.47, flicker=moving?Math.sin(clock*21)*w*.014:0;
+        const tail=-plane.width*.47, flicker=moving?Math.sin(travel*21)*w*.014:0;
         flame.clear().poly([tail+4,-w*.018,tail-w*.24-flicker,0,tail+4,w*.018]).fill({color:0xff6922,alpha:.38}).poly([tail+4,-w*.011,tail-w*.19-flicker,0,tail+4,w*.011]).fill({color:0xffa93d,alpha:.8}).poly([tail+4,-w*.005,tail-w*.11-flicker*.5,0,tail+4,w*.005]).fill({color:0xfff4b0,alpha:.95});
       });
     }
