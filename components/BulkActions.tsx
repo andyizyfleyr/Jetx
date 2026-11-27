@@ -1,13 +1,11 @@
 'use client';
-import { useEffect } from 'react';
 import { useGame } from '@/store/game';
 import { playSound } from '@/lib/audio';
 const money = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Kept outside the scrolling area so round actions are always within reach. */
 export default function BulkActions({ amounts }: { amounts: string[] }) {
-  const { bets, phase, multiplier, placeAll, cancelAll, cashAll, sound, feedback, notify, clearFeedback, set } = useGame();
-  useEffect(() => { if (!feedback) return; const id = feedback.id; const timer = window.setTimeout(() => clearFeedback(id), 4000); return () => window.clearTimeout(timer); }, [feedback, clearFeedback]);
+  const { bets, phase, multiplier, placeAll, cancelAll, cashAll, sound, notify, set } = useGame();
   const active = bets.filter(b => b.status === 'active'), queued = bets.filter(b => b.status === 'queued'), free = bets.filter(b => b.status === 'empty');
   const values = amounts.map(value => Number(value.replace(',', '.')));
   const totalPlace = bets.reduce((sum, bet, i) => sum + (bet.status === 'empty' && Number.isFinite(values[i]) && values[i] >= 1 ? Math.round(values[i] * 100) / 100 : 0), 0);
@@ -21,7 +19,6 @@ export default function BulkActions({ amounts }: { amounts: string[] }) {
     notify(text, result === 'ok' ? 'success' : 'error');
   };
   return <div className="bulk-fixed">
-    <div className={`bulk-message feedback-${feedback?.kind || 'info'}`} role="status" aria-live="polite">{feedback?.text}</div>
     <div className="bulk-actions classic-actions" aria-label="Actions groupées">
       {phase === 'FLYING' && active.length > 0 && <button className="all-button all-green" onClick={() => { const gain = cashAll(); if (gain) { playSound('cash', sound); notify(`Gains encaissés : $ ${money(gain)} à ${multiplier.toFixed(2)}x.`, 'success'); } }}><strong>Tout encaisser</strong><span>$ {money(totalActive)}</span></button>}
       {queued.length > 0 && <button className="all-button all-red" onClick={() => { cancelAll(); notify(`Mises annulées : $ ${money(totalQueued)} remboursés.`, 'success'); }}><strong>Tout annuler</strong><span>$ {money(totalQueued)}</span></button>}
