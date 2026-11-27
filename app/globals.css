@@ -50,3 +50,18 @@
 .bet-panel{padding:10px 4% 12px;border-radius:25px 25px 0 0;background:linear-gradient(180deg,#303039,#191a23 80%)}
 .bet-panel .panel-controls{height:44px;min-height:44px;gap:5px;font-size:12px}.bet-panel .auto-control{gap:6px}.bet-panel .switch{width:34px;height:21px}.bet-panel .switch span{width:15px;height:15px}.bet-panel .switch.on span{transform:translateX(12px)}.bet-panel .auto-play{gap:4px;min-height:44px}
 .bet-panel .bet-grid{gap:6px}.bet-panel .bet-card{height:104px;padding:7px;border-radius:13px;gap:3px;justify-content:space-between}.bet-panel .bet-card:has(.card-error){height:120px}.bet-panel .amount-control{height:27px;gap:3px}.bet-panel .amount-control button{width:27px;height:27px;border-radius:50%}.bet-panel .amount-control input{font-size:14px}.bet-panel .quick-bets button{height:20px;font-size:9px}.bet-panel .bet-button{min-height:34px;margin-top:0;border-radius:14px;font-size:16px}.bet-panel .bet-caption{font-size:10px;margin:0;line-height:1.25}.bet-panel .bet-value{font-size:18px}.bet-panel .card-error{height:auto;font-size:9px;line-height:1.1}.bet-panel .classic-actions .all-button{min-height:48px;height:48px}.bet-panel .classic-actions{margin-top:9px;gap:7px}
+/* Betting panel matched to the supplied reference: two-by-two cards, prominent
+   colored actions, and a single wide pill when all cards share an action. */
+.bet-panel{padding:8px 1.5% 14px;border:1px solid #ffffff36;border-bottom:0;border-radius:25px 25px 0 0;background:linear-gradient(180deg,#303039 0%,#1a1b23 38%,#171820 100%)}
+.bet-panel .panel-controls{height:39px;min-height:39px;padding:0 2%;font-size:13px;color:#d2d2d8}
+.bet-panel .switch{width:34px;height:21px;background:#4d4f59}.bet-panel .switch span{background:#c8c9ce}.bet-panel .auto-play{color:#d2d2d8}.bet-panel .auto-play.selected{color:#81efa0}
+.bet-panel .bet-grid{gap:5px}.bet-panel .bet-card{height:112px;min-width:0;padding:8px;border:0;border-radius:13px;gap:2px;background:#281d27;box-shadow:none;justify-content:space-between}
+.bet-panel .bet-card.active{background:#1a2928}.bet-panel .bet-card:has(.card-error){height:128px}
+.bet-panel .bet-caption{max-width:100%;font-size:11px;font-weight:500;color:#b7b6bf;line-height:1.15;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bet-panel .bet-value{max-width:100%;font-size:19px;font-weight:850;line-height:1.05;color:#cecad2;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.bet-panel .active .bet-value{color:#6fdb89}
+.bet-panel .bet-button{width:100%;min-height:44px;border:1px solid #ffffff80;border-radius:18px;font-size:18px;font-weight:850;line-height:1;text-shadow:0 1px 3px #0007;box-shadow:inset 0 1px 2px #ffffff55,0 3px 6px #0005}
+.bet-panel .bet-green{background:linear-gradient(#00c74c,#009e37);color:#fff}.bet-panel .bet-red{background:linear-gradient(#e93450,#cd1030);color:#fff}
+.bet-panel .amount-control{height:28px}.bet-panel .amount-control button{width:28px;height:28px}.bet-panel .quick-bets button{height:20px}
+.bet-panel .classic-actions{margin:12px 2% 0;gap:7px}.bet-panel .classic-actions .all-button{height:54px;min-height:54px;border-radius:35px}.bet-panel .classic-actions .all-button strong{font-size:18px;line-height:1.1}.bet-panel .classic-actions .all-button span{font-size:13px;margin-top:2px}
+.bet-panel .all-green,.bet-panel .all-place{background:#1b302a;color:#70df8e;border:1px solid #60766a}.bet-panel .all-red{background:#321d29;color:#ff5970;border:1px solid #74525c}
+@media(max-width:370px){.bet-panel .panel-controls{font-size:12px}.bet-panel .bet-caption{font-size:10px}.bet-panel .bet-value{font-size:17px}.bet-panel .bet-button{font-size:16px}.bet-panel .classic-actions .all-button strong{font-size:16px}}
