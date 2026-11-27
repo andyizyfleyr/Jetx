@@ -188,3 +188,6 @@
   .game-area.phase-flying .multiplier-wide{font-size:clamp(48px,5vw,70px)}
   .phone .game-meta{left:3%;right:3%}
 }
+
+/* Franc CFA currency marker, compact and legible beside amounts. */
+.currency-symbol{font-weight:900;font-style:italic}
