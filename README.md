@@ -21,7 +21,7 @@ lib/          sons synthétisés avec Web Audio
 store/        état et opérations de jeu Zustand
 ```
 
-Le solde et les mises sont fictifs et réinitialisés au rechargement. Les autres joueurs et leur nombre sont simulés, et ne sont pas synchronisés. Le ping est la durée aller-retour mesurée vers la route de synchronisation. Les connexions peuvent introduire un léger décalage ; les mises sont suspendues lorsque la synchronisation est indisponible.
+Le solde, les mises en cours, les montants saisis et les préférences sont fictifs et enregistrés localement dans le navigateur. Ils ne sont pas partagés entre appareils et peuvent disparaître si les données du navigateur sont effacées. Évitez de jouer simultanément dans plusieurs onglets : ils ne sont pas synchronisés entre eux. Les autres joueurs et leur nombre sont simulés, et ne sont pas synchronisés. Le ping est la durée aller-retour mesurée vers la route de synchronisation. Les connexions peuvent introduire un léger décalage ; les mises sont suspendues lorsque la synchronisation est indisponible.
 
 Le calendrier des manches est déterministe, public et périodique. Avec une base Neon, les changements de mode sont partagés et conservés. Les résultats futurs sont donc prévisibles : ce mécanisme est strictement réservé à la démonstration, non sécurisé et inadapté à tout jeu en argent réel.
 
