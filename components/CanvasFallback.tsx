@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef } from 'react';
 import { useGame, type Phase } from '@/store/game';
+import { flightVisual } from '@/lib/flightVisual';
 
 // The background plates and jet are original local artwork; Canvas adds parallax and motion.
 export default function CanvasFallback() {
@@ -12,20 +13,20 @@ export default function CanvasFallback() {
     const sky = new Image(); sky.src = '/sky-flight.jpg';
     const space = new Image(); space.src = '/sky-space.jpg';
     const jet = new Image(); jet.src = '/jet.webp';
+    const cloud = new Image(); cloud.src = '/cloud.webp';
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
     let frame = 0;
     let previousPhase: Phase = useGame.getState().phase;
-    let changeTime = performance.now();
     let spaceMix = previousPhase === 'CRASHED' ? 1 : 0;
     let previousTime = performance.now();
     const start = performance.now();
 
-    function cover(image: HTMLImageElement, w: number, h: number, drift: number) {
+    function cover(image: HTMLImageElement, w: number, h: number, drift: number, ascent = 0, isSky = false) {
       if (!image.complete || !image.naturalWidth) return;
       // Overscan prevents any blank edges while the atmospheric plate drifts.
-      const scale = Math.max(w / image.naturalWidth, h / image.naturalHeight) * 1.1;
+      const scale = Math.max(w / image.naturalWidth, h / image.naturalHeight) * (isSky ? 1.35 : 1.12);
       const iw = image.naturalWidth * scale, ih = image.naturalHeight * scale;
-      ctx!.drawImage(image, (w - iw) / 2 + drift * w * .025, (h - ih) / 2, iw, ih);
+      ctx!.drawImage(image, (w - iw) / 2 + drift * Math.max(0, iw-w)*.35, (h - ih) / 2 + (isSky ? (ascent*2-1)*Math.max(0,ih-h)*.4 : 0), iw, ih);
     }
     function parachute(x: number, y: number, size: number, sway: number) {
       const c = ctx!; c.save(); c.translate(x, y); c.scale(size, size); c.rotate(sway);
@@ -47,26 +48,26 @@ export default function CanvasFallback() {
       const w = canvas.clientWidth, h = canvas.clientHeight, dpr = Math.min(window.devicePixelRatio || 1, 2);
       if (canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)) { canvas.width = Math.round(w*dpr); canvas.height = Math.round(h*dpr); }
       ctx.setTransform(dpr,0,0,dpr,0,0); ctx.clearRect(0,0,w,h);
-      const { phase, animations } = useGame.getState();
+      const { phase, animations, multiplier } = useGame.getState();
       const moving = animations && !reduced.matches;
       const t = moving ? (now-start)/1000 : 0;
-      if (phase !== previousPhase) { previousPhase = phase; changeTime = now; }
+      const { seconds: travel, ascent, entrance } = flightVisual(multiplier, moving);
+      if (phase !== previousPhase) { previousPhase = phase; }
       const delta = Math.min(100, now-previousTime); previousTime = now;
       const target = phase === 'CRASHED' ? 1 : 0;
       spaceMix = moving ? spaceMix + (target-spaceMix)*Math.min(1,delta/420) : target;
       ctx.fillStyle='#182039'; ctx.fillRect(0,0,w,h);
-      cover(sky,w,h,Math.sin(t*.06));
+      cover(sky,w,h,Math.sin(travel*.09),ascent,true);
       ctx.save(); ctx.globalAlpha=spaceMix; cover(space,w,h,Math.sin(t*.04)); ctx.restore();
       // Slight darkening protects the legibility of the multiplier and labels.
       const shade=ctx.createLinearGradient(0,0,0,h); shade.addColorStop(0,'rgba(9,13,26,.24)'); shade.addColorStop(.55,'rgba(16,17,31,.05)'); shade.addColorStop(1,'rgba(13,13,24,.35)'); ctx.fillStyle=shade; ctx.fillRect(0,0,w,h);
       ctx.save(); ctx.globalAlpha=1-spaceMix;
-      for(let i=0;i<5;i++) { const x=w*(.08+i*.22)+Math.sin(t*.3+i)*4; const y=h*.27+((t*(2+i*.3)+i*19)%(h*.25)); parachute(x,y,.42+(i%3)*.1,Math.sin(t*.6+i)*.05); }
+      if (cloud.complete && cloud.naturalWidth) for(let i=0;i<5;i++) { const cw=w*(.5+(i%3)*.18), ch=cw*cloud.naturalHeight/cloud.naturalWidth; const x=((i*w*.37-travel*(24+i*9))%(w+cw)+w+cw)%(w+cw)-cw/2; const y=h*(.25+(i%3)*.16)+ascent*h*(.1+i*.025); ctx.save(); ctx.globalAlpha=(1-spaceMix)*[.20,.27,.18,.25,.16][i]; ctx.drawImage(cloud,x-cw/2,y-ch/2,cw,ch); ctx.restore(); }
+      for(let i=0;i<5;i++) { const x=w*(.08+i*.22)+Math.sin(t*.3+i)*4-travel*(1+i*.3); const y=h*.27+((travel*(3+i*.5)+i*19)%(h*.25)); parachute(x,y,.42+(i%3)*.1,Math.sin(t*.6+i)*.05); }
       if (phase === 'FLYING' && jet.complete && jet.naturalWidth) {
-        const flightTime = moving ? (now-changeTime)/1000 : 3;
-        const entrance = Math.min(1,flightTime/1.5);
-        const x=w*(.39+entrance*.1)+Math.sin(t*.7)*4, y=h*(.43-entrance*.015)+Math.sin(t*1.2)*2;
+        const x=w*(.40+entrance*.10+ascent*.03)+Math.sin(t*.7)*3, y=h*(.44-entrance*.025-ascent*.035)+Math.sin(t*1.2)*2;
         const jw=w*.68, jh=jw*jet.naturalHeight/jet.naturalWidth;
-        ctx.save(); ctx.translate(x,y); ctx.rotate(-.1); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
+        ctx.save(); ctx.translate(x,y); ctx.rotate(-.09-ascent*.08); ctx.shadowColor='rgba(255,155,66,.3)'; ctx.shadowBlur=10; ctx.drawImage(jet,-jw*.5,-jh*.5,jw,jh); ctx.restore();
       }
       ctx.restore();
       ctx.save(); ctx.globalAlpha=spaceMix*.8;

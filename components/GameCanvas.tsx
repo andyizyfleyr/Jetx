@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useGame, type Phase } from '@/store/game';
 import CanvasFallback from './CanvasFallback';
+import { flightVisual } from '@/lib/flightVisual';
 
 /** Pixi runs only in the browser. The original Canvas scene remains underneath as
  * a graceful fallback on devices without WebGL or if an asset cannot load. */
@@ -62,17 +63,25 @@ export default function GameCanvas() {
         const elapsed = moving ? (now-phaseStart)/1000 : 10;
         spaceMix += ((phase === 'CRASHED' ? 1 : 0)-spaceMix) * (moving ? Math.min(1,delta*3) : 1);
         const w=app.screen.width, h=app.screen.height;
-        const cover = (sprite: InstanceType<typeof Sprite>) => { const scale=Math.max(w/sprite.texture.width,h/sprite.texture.height)*1.12; sprite.scale.set(scale); sprite.position.set(w/2+Math.sin(clock*.08)*w*.012,h/2); };
-        cover(sky); cover(space); space.alpha=spaceMix;
+        const { seconds: travel, ascent, entrance } = flightVisual(state.multiplier, moving);
+        // The camera follows the same flight timeline as the aircraft. Overscan
+        // keeps the photograph covering the viewport as altitude changes.
+        const cover = (sprite: InstanceType<typeof Sprite>, isSky: boolean) => {
+          const scale=Math.max(w/sprite.texture.width,h/sprite.texture.height)*(isSky ? 1.35 : 1.12);
+          sprite.scale.set(scale);
+          const excessX=Math.max(0, (sprite.width-w)/2), excessY=Math.max(0, (sprite.height-h)/2);
+          sprite.position.set(w/2 + (isSky ? Math.sin(travel*.09)*excessX*.7 : 0), h/2 + (isSky ? (ascent*2-1)*excessY*.8 : 0));
+        };
+        cover(sky, true); cover(space, false); space.alpha=spaceMix;
         clouds.alpha = 1-spaceMix;
-        cloudSprites.forEach((sprite,i) => { const cw=w*(.5+(i%3)*.18); sprite.width=cw; sprite.height=cw*cloudTexture.height/cloudTexture.width; sprite.x=((i*w*.37-clock*(3+i*1.8))%(w+cw)+w+cw)%(w+cw)-cw/2; sprite.y=h*(.28+(i%3)*.16); });
+        cloudSprites.forEach((sprite,i) => { const cw=w*(.5+(i%3)*.18); sprite.width=cw; sprite.height=cw*cloudTexture.height/cloudTexture.width; const distance = travel*(24+i*9); sprite.x=((i*w*.37-distance)%(w+cw)+w+cw)%(w+cw)-cw/2; sprite.y=h*(.25+(i%3)*.16)+ascent*h*(.1+i*.025); });
         parachutes.alpha=1-spaceMix;
-        divers.forEach((diver,i)=>{diver.scale.set(.45+(i%3)*.12); diver.x=w*(.08+i*.21)+Math.sin(clock*.4+i)*5; diver.y=h*.25+((clock*(2+i*.4)+i*19)%(h*.28)); diver.rotation=Math.sin(clock*.6+i)*.06;});
+        divers.forEach((diver,i)=>{diver.scale.set(.45+(i%3)*.12); diver.x=w*(.08+i*.21)+Math.sin(clock*.4+i)*5-travel*(1+i*.3); diver.y=h*.25+((travel*(3+i*.5)+i*19)%(h*.3)); diver.rotation=Math.sin(clock*.6+i)*.06;});
         stars.alpha=spaceMix; astronauts.forEach((figure,i)=>{figure.position.set(w*(.12+i*.38)+Math.sin(clock*.35+i)*7,h*(.31+i*.1)+Math.cos(clock*.3+i)*5); figure.scale.set(.45+i*.1); figure.rotation=.3+i*.6+Math.sin(clock*.3)*.1;}); sparks.forEach((dot,i)=>{dot.x=(i*83+17)%w; dot.y=(i*53+19)%h; dot.alpha=.25+.5*(.5+.5*Math.sin(clock*1.1+i));});
-        const progress=Math.min(1,elapsed/1.7); const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
+        const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
         flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
-        flight.position.set(w*(.40+.13*progress+escaping*.85)+Math.sin(clock*.9)*4,h*(.43-.015*progress-escaping*.25)+Math.sin(clock*1.1)*3);
-        flight.rotation=-.12-Math.sin(clock*.7)*.025; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
+        flight.position.set(w*(.40+.10*entrance+.03*ascent+escaping*.85)+Math.sin(clock*.9)*3,h*(.44-.025*entrance-.035*ascent-escaping*.25)+Math.sin(clock*1.1)*2);
+        flight.rotation=-.09-.08*ascent-Math.sin(clock*.7)*.015; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
         // Flame is a separate, flickering geometry layer, not baked into the jet image.
         const tail=-plane.width*.47, flicker=moving?Math.sin(clock*21)*w*.014:0;
         flame.clear().poly([tail+3,0,tail-w*.23-flicker,0,tail-w*.06,-w*.023]).fill({color:0xff6922,alpha:.35}).poly([tail+3,0,tail-w*.18-flicker,0,tail-w*.035,-w*.011]).fill({color:0xffbe52,alpha:.85}).poly([tail+3,0,tail-w*.1-flicker*.5,0,tail-w*.02,-w*.005]).fill({color:0xfff5b0,alpha:.95});
