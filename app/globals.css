@@ -69,3 +69,5 @@
 .bulk-fixed{position:relative;z-index:4;flex:0 0 auto;max-height:30dvh;overflow-y:auto;overscroll-behavior:contain;padding:8px 4% 6px;background:#191a23;border-top:1px solid #ffffff1c;box-shadow:0 -7px 20px #0004}
 .bulk-fixed .classic-actions{margin:0;gap:6px}.bulk-fixed .all-button{margin:0;height:54px;min-height:54px;border-radius:35px}.bulk-fixed .all-button strong{font-size:18px;line-height:1.1}.bulk-fixed .all-button span{font-size:13px;margin-top:2px}.bulk-fixed .all-green,.bulk-fixed .all-place{background:#1b302a;color:#70df8e;border:1px solid #60766a}.bulk-fixed .all-red{background:#321d29;color:#ff8596;border:1px solid #74525c}.bulk-fixed .bulk-message{margin:5px 4px 0;text-align:center}
 @media(max-height:700px){.bulk-fixed .all-button{height:46px;min-height:46px}.bulk-fixed .all-button strong{font-size:15px}.bulk-fixed .all-button span{font-size:11px}}
+/* Actions end the screen; keep them clear of the device's bottom safe area. */
+.bulk-fixed{padding-bottom:max(10px,env(safe-area-inset-bottom))}
