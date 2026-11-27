@@ -28,7 +28,7 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
       </div>
       <div className="quick-bets">{[10, 50, 100, 500].map(n => <button key={n} className={Number(amount) === n ? 'chosen' : ''} onClick={() => update(String(n))}>{n}</button>)}</div>
       {error && <div className="card-error" role="status">{error}</div>}
-      <button className="bet-button bet-green" disabled={!syncReady} onClick={submit}>Miser <span>↗</span></button>
+      <button className="bet-button bet-green" disabled={!syncReady} onClick={submit}>Miser</button>
     </> : <>
       <div className="bet-caption">{bet.status === 'active' ? 'Vous gagnez' : phase === 'WAITING' ? 'Mise placée · cette manche' : 'En attente de la prochaine manche'}</div>
       <div className="bet-value">$ {money(bet.status === 'active' ? Math.floor(bet.amount * multiplier * 100) / 100 : bet.amount)}</div>
