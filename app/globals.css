@@ -215,3 +215,5 @@
   .activity-result strong,.activity-result small{display:block}.activity-result strong{font-size:11px}.activity-result small{margin-top:2px;color:#a9c9b3;font-size:9px}
   .activity-empty{color:#aeb4c1;text-align:center;font-size:12px;padding:20px 0}
 }
+
+@media(min-width:1000px){.activity-row.activity-own{background:#4bc98219;border:1px solid #70e2a052}.activity-avatar.own{background:#278753;color:#fff}.activity-own .activity-player{color:#d9ffe7}}

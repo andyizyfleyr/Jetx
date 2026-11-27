@@ -50,9 +50,9 @@ export function useGameEngine() {
         if (s.autoCash && autoTime < target.crashAt && now >= autoTime) {
           const gain = Math.floor(b.amount * s.autoTarget * 100) / 100;
           balance += gain; autoGain += gain; autoCount++;
-          return { ...b, status: 'empty', roundId: undefined, result: { type: 'won', amount: gain } };
+          return { ...b, status: 'empty', roundId: undefined, result: { type: 'won', amount: gain, roundId: target.id } };
         }
-        if (now >= target.crashAt) { lostCount++; lostTotal += b.amount; return { ...b, status: 'empty', roundId: undefined, result: { type: 'lost', amount: b.amount } }; }
+        if (now >= target.crashAt) { lostCount++; lostTotal += b.amount; return { ...b, status: 'empty', roundId: undefined, result: { type: 'lost', amount: b.amount, roundId: target.id } }; }
         return b.status === 'active' ? b : { ...b, status: 'active' };
       });
       let replayed = 0, skipped = 0;
