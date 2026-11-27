@@ -71,8 +71,8 @@ export default function GameCanvas() {
         stars.alpha=spaceMix; astronauts.forEach((figure,i)=>{figure.position.set(w*(.12+i*.38)+Math.sin(clock*.35+i)*7,h*(.31+i*.1)+Math.cos(clock*.3+i)*5); figure.scale.set(.45+i*.1); figure.rotation=.3+i*.6+Math.sin(clock*.3)*.1;}); sparks.forEach((dot,i)=>{dot.x=(i*83+17)%w; dot.y=(i*53+19)%h; dot.alpha=.25+.5*(.5+.5*Math.sin(clock*1.1+i));});
         const progress=Math.min(1,elapsed/1.7); const escaping=phase==='CRASHED' ? Math.min(1,elapsed/.5) : 0;
         flight.visible=phase==='FLYING'||(phase==='CRASHED'&&elapsed<.5); flight.alpha=phase==='CRASHED'?1-escaping:1;
-        flight.position.set(w*(.40+.13*progress+escaping*.85)+Math.sin(clock*.9)*4,h*(.43-.06*progress-escaping*.25)+Math.sin(clock*1.1)*3);
-        flight.rotation=-.12-Math.sin(clock*.7)*.025; plane.width=w*.58; plane.height=plane.width*planeTexture.height/planeTexture.width;
+        flight.position.set(w*(.40+.13*progress+escaping*.85)+Math.sin(clock*.9)*4,h*(.43-.015*progress-escaping*.25)+Math.sin(clock*1.1)*3);
+        flight.rotation=-.12-Math.sin(clock*.7)*.025; plane.width=w*.68; plane.height=plane.width*planeTexture.height/planeTexture.width;
         // Flame is a separate, flickering geometry layer, not baked into the jet image.
         const tail=-plane.width*.47, flicker=moving?Math.sin(clock*21)*w*.014:0;
         flame.clear().poly([tail+3,0,tail-w*.23-flicker,0,tail-w*.06,-w*.023]).fill({color:0xff6922,alpha:.35}).poly([tail+3,0,tail-w*.18-flicker,0,tail-w*.035,-w*.011]).fill({color:0xffbe52,alpha:.85}).poly([tail+3,0,tail-w*.1-flicker*.5,0,tail-w*.02,-w*.005]).fill({color:0xfff5b0,alpha:.95});

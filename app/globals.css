@@ -36,3 +36,13 @@
 .bulk-actions{display:grid;gap:7px;margin-top:12px}.bulk-button{min-height:55px;border-radius:13px;padding:8px 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;text-align:left;border:1px solid;font-variant-numeric:tabular-nums}.bulk-button span{display:flex;flex-direction:column;gap:3px;min-width:0}.bulk-button strong{font-size:13px;line-height:1.15}.bulk-button small{font-size:10px;line-height:1.2;opacity:.88}.bulk-button b{font-size:13px;white-space:nowrap}.bulk-place{background:#214258;color:#e1f5ff;border-color:#417b98}.bulk-cancel{background:#421c29;color:#ffb0bd;border-color:#b15c6c}.bulk-cash{background:#123d29;color:#a0efb8;border-color:#4d9a69}.bulk-button:disabled{opacity:1;background:#262831;color:#aeb0bc;border-color:#4b4d58}.bulk-message{color:#f4d995;font-size:11px;line-height:1.4;margin-top:8px;min-height:0}.bulk-message:empty{display:none}
 /* Restore the original full-width pill treatment for relevant bulk actions. */
 .classic-actions{gap:8px;margin-top:12px}.classic-actions .all-button{margin:0;min-height:56px}.classic-actions .all-button strong{font-size:16px}.classic-actions .all-button span{font-size:12px}.all-place{background:#173d2d;color:#a0efb8;border:1px solid #4d9a69}
+/* Keep the flight artwork and the multiplier in separate vertical lanes. */
+.game-area{height:clamp(330px,48dvh,440px);min-height:330px}
+.center-display{inset:48% 0 10%;justify-content:flex-end}
+.phase-flying .center-display{inset:52% 0 10%}
+.phase-flying .multiplier{font-size:clamp(60px,18vw,82px)}
+.phase-flying .multiplier-wide{font-size:clamp(46px,14vw,62px)}
+.phase-flying .bet-count{margin-top:8px}
+.cash-bubbles{inset:0 auto auto 2%;width:86px;height:100%;overflow:hidden}
+.cash-bubbles span{top:48%;white-space:nowrap;font-size:9px;max-width:86px;overflow:hidden;text-overflow:ellipsis}
+@media(max-height:700px){.game-area{height:330px;min-height:330px}.phase-flying .multiplier{font-size:62px}.phase-flying .multiplier-wide{font-size:48px}}
