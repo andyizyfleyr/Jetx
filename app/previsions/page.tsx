@@ -68,6 +68,19 @@ export default function PredictionsPage() {
     } catch { setNotice('Impossible de modifier le mode. Réessayez.'); }
     finally { setBusy(false); }
   }
+  async function selectRandom(kind: 'grand_aleatoire' | 'petit_aleatoire') {
+    if (busy || !fresh || !snapshot?.controlsAvailable || !current) return;
+    setBusy(true); setNotice('');
+    try {
+      const response = await fetch('/api/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: kind }) });
+      if (!response.ok) throw new Error('Programmation indisponible');
+      const result: { effectiveId: number; crash: number } = await response.json();
+      setSnapshot(null);
+      setNotice(`${result.crash.toFixed(2)}x programmé pour la manche #${result.effectiveId} uniquement.`);
+      setRevision(value => value + 1);
+    } catch { setNotice('Impossible de programmer le multiplicateur. Réessayez.'); }
+    finally { setBusy(false); }
+  }
   const phase = current ? serverNow < current.flightStart ? 'waiting' : serverNow < current.crashAt ? 'flying' : 'crashed' : null;
   const phaseLabel = phase === 'waiting' ? 'En attente du décollage' : phase === 'flying' ? 'En vol' : 'Terminée';
   const flightTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -82,10 +95,12 @@ export default function PredictionsPage() {
       <section className="mode-controls" aria-label="Réglage des modes">
         <div className="mode-grid" role="group" aria-label="Choisir le mode des prochaines manches">
           {(['beaucoup_plus_gentil', 'plus_gentil', 'gentil', 'mechant', 'pire', 'plus_pire', 'beaucoup_plus_pire'] as const).map(mode => <button key={mode} type="button" className={`mode-toggle ${nextMode === mode ? 'selected' : ''}`} aria-pressed={nextMode === mode} disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectMode(mode)}><strong>{modeLabels[mode]}</strong><i aria-hidden="true"/></button>)}
+          <button type="button" className="mode-toggle random-toggle" disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectRandom('grand_aleatoire')}><strong>Très grand x aléatoire</strong></button>
+          <button type="button" className="mode-toggle random-toggle" disabled={!fresh || !snapshot?.controlsAvailable || busy || !current} onClick={() => void selectRandom('petit_aleatoire')}><strong>Petit x aléatoire</strong></button>
         </div>
         <div className="mode-detail">{current ? <>Actuel : <strong>{modeLabels[current.mode]}</strong> · {snapshot?.scheduled ? <>Prévu dès #{snapshot.scheduled.effectiveId} : <strong>{modeLabels[snapshot.scheduled.mode]}</strong></> : <>Suivant : <strong>{nextMode ? modeLabels[nextMode] : '—'}</strong></>}{nextMode && nextMode !== 'normal' ? ' · Touchez à nouveau pour revenir au mode normal.' : ''}</> : 'Synchronisation des modes…'}</div>
         {!snapshot?.controlsAvailable && snapshot && <div className="mode-warning">Pilotage indisponible : la variable DATABASE_URL doit être configurée sur le serveur.</div>}
-        <p className="mode-disclaimer">Les résultats peuvent changer selon le mode choisi par les visiteurs. Démo prévisible, sans argent réel.</p>
+        <p className="mode-disclaimer">Aléatoire : une manche (100–1 000x ou 1,01–2x). Résultats publics et modifiables · Démo.</p>
         {notice && <div className="mode-notice" role="status">{notice}</div>}
       </section>
       <div className="forecast-section-title"><div><span>REPÈRE</span><h2>Manche affichée dans le jeu</h2></div><div className={`forecast-status ${current ? 'live' : ''}`}><i/>{current ? 'Synchronisé' : 'Synchronisation'}</div></div>
@@ -99,7 +114,7 @@ export default function PredictionsPage() {
       <div className="forecast-list" aria-live="polite">
         {upcoming.length ? upcoming.map((round, i) => <article className="forecast-card" key={round.id}>
           <div className="forecast-number">{String(i + 1).padStart(2, '0')}</div>
-          <div className="forecast-details"><strong>{i === 0 ? 'Manche suivante' : `Manche +${i + 1}`} · #{round.id}</strong><span><Clock3 size={13}/> Décollage {flightTime(round.flightStart)} · {modeLabels[round.mode]}</span></div>
+          <div className="forecast-details"><strong>{i === 0 ? 'Manche suivante' : `Manche +${i + 1}`} · #{round.id}</strong><span><Clock3 size={13}/> Décollage {flightTime(round.flightStart)} · {round.oneShot ? 'Aléatoire · une manche' : modeLabels[round.mode]}</span></div>
           <div className="forecast-future-result"><span>RÉSULTAT FINAL</span><div className="forecast-value">{round.crash.toFixed(2)}<small>x</small></div></div>
         </article>) : <div className="forecast-empty">{error ? 'Connexion indisponible. Nouvelle tentative en cours…' : 'Chargement des prochaines manches…'}</div>}
       </div>

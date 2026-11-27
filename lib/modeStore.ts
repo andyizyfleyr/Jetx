@@ -1,5 +1,6 @@
 import 'server-only';
 import { Pool, type PoolClient } from 'pg';
+import { randomInt } from 'node:crypto';
 import { getSharedSchedule, type GameMode, type ModeEvent } from './sharedRounds';
 
 let pool: Pool | undefined;
@@ -29,8 +30,9 @@ async function withSchedule<T>(callback: (client: PoolClient, events: ModeEvent[
         ALTER TABLE skyjet_mode_events ADD CONSTRAINT skyjet_mode_events_mode_check_v2 CHECK (mode IN ('normal','gentil','plus_gentil','beaucoup_plus_gentil','mechant','pire','plus_pire','beaucoup_plus_pire'));
       END IF;
     END $$`);
-    const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode }>('SELECT effective_id, start_ms, mode FROM skyjet_mode_events ORDER BY effective_id');
-    const events = rows.rows.map(row => ({ effectiveId: Number(row.effective_id), start: Number(row.start_ms), mode: row.mode }));
+    await client.query('ALTER TABLE skyjet_mode_events ADD COLUMN IF NOT EXISTS crash_override double precision');
+    const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode; crash_override: number | null }>('SELECT effective_id, start_ms, mode, crash_override FROM skyjet_mode_events ORDER BY effective_id');
+    const events = rows.rows.map(row => ({ effectiveId: Number(row.effective_id), start: Number(row.start_ms), mode: row.mode, crashOverride: row.crash_override == null ? null : Number(row.crash_override) }));
     const result = await callback(client, events, Date.now());
     await client.query('COMMIT');
     return result;
@@ -60,7 +62,24 @@ export async function changeMode(mode: GameMode) {
     const previous = rounds.find(r => r.id === target.id - 1);
     if (!previous) throw new Error('NO_PREVIOUS_ROUND');
     await client.query('DELETE FROM skyjet_mode_events WHERE effective_id >= $1', [target.id]);
-    if (mode !== previous.mode) await client.query('INSERT INTO skyjet_mode_events (effective_id, start_ms, mode) VALUES ($1, $2, $3)', [target.id, target.start, mode]);
+    if (mode !== previous.mode || previous.oneShot) await client.query('INSERT INTO skyjet_mode_events (effective_id, start_ms, mode) VALUES ($1, $2, $3)', [target.id, target.start, mode]);
     return { effectiveId: target.id, mode };
+  });
+}
+
+/** Program one shared result, then restore the mode that would have applied. */
+export async function scheduleRandom(kind: 'grand_aleatoire' | 'petit_aleatoire') {
+  return withSchedule(async (client, events, now) => {
+    const rounds = getSharedSchedule(now, events);
+    const current = rounds.find(r => r.start <= now && now < r.end);
+    const target = rounds.find(r => current && r.id > current.id && r.start >= now + 8000);
+    if (!target) throw new Error('NO_FUTURE_ROUND');
+    const crash = kind === 'grand_aleatoire' ? randomInt(10000, 100001) / 100 : randomInt(101, 201) / 100;
+    const end = target.start + 5000 + Math.log(crash) / .00006 + 3000;
+    // Replace any future selection atomically; retain the mode scheduled for this round.
+    await client.query('DELETE FROM skyjet_mode_events WHERE effective_id >= $1', [target.id]);
+    await client.query('INSERT INTO skyjet_mode_events (effective_id, start_ms, mode, crash_override) VALUES ($1, $2, $3, $4)', [target.id, target.start, target.mode, crash]);
+    await client.query('INSERT INTO skyjet_mode_events (effective_id, start_ms, mode) VALUES ($1, $2, $3)', [target.id + 1, end, target.mode]);
+    return { effectiveId: target.id, mode: target.mode, crash };
   });
 }
