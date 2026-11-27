@@ -9,3 +9,27 @@
 .multiplier-wide{font-size:clamp(48px,15vw,70px);letter-spacing:-2px}
 /* Touch-friendly controls keep their own hit areas even in the two-column grid. */
 .bet-card{height:200px}.amount-control{height:44px}.amount-control button{width:40px;height:44px}.quick-bets button{height:38px}.card-error{height:12px}@media(max-width:370px){.amount-control button{width:38px;height:44px}}@media(max-height:700px){.bet-card{height:200px}}
+
+/* Readable text on every state: opaque surfaces prevent the artwork from
+   changing the contrast of labels and history chips underneath them. */
+:root{--text-primary:#ffffff;--text-secondary:#c4c6d0;--text-muted:#b5b7c3;--success-text:#79eda0;--danger-text:#ff9baa}
+.phone,.dialog,.bet-panel,.list-section{color:var(--text-primary)}
+.game-header .balance,.round-button{background:rgba(31,35,48,.94);color:#fff;border-color:#777d8e}
+.balance span{background:#555b6b;color:#fff}.balance strong,.history-title,.logo{color:#fff}
+.history-pill.neutral{background:#343b4c;color:#fff;border-color:#596273}
+.history-pill.green{background:#103d29;color:#94efb1;border-color:#356f4b}
+.history-pill.gold{background:#41370d;color:#ffe66d;border-color:#7b6a29}
+.history-expanded{background:#20232e;color:#fff}.history-title button,.dialog-close{color:#e1e3eb}
+.center-display::before{content:'';position:absolute;inset:3% 5% -4%;z-index:-1;pointer-events:none;background:radial-gradient(ellipse,rgba(8,12,25,.68) 0%,rgba(8,12,25,.4) 48%,transparent 75%)}
+.waiting-label,.waiting-sub{color:#fff;text-shadow:0 1px 5px #000}.waiting-label{opacity:1}.bet-count{background:rgba(26,30,42,.92);color:#fff;border-color:#7d8292}
+.multiplier,.crash-label,.countdown{color:#fff;text-shadow:0 2px 8px #090b14,0 4px 20px #090b14}.multiplier.crashed{color:#ff7186}
+.game-meta{color:#fff;text-shadow:0 1px 5px #000,0 1px 3px #000;font-weight:600}
+.section-kicker,.panel-demo,.panel-controls,.auto-play,.auto-target-row{color:var(--text-secondary)}
+.auto-play.selected{color:var(--success-text)}.target{background:#111720;color:#a8efbd;border-color:#566474}.target input,.amount-control input{color:#fff;caret-color:#fff}
+.bet-card{background:#211e27}.bet-card.active{background:#172d23}.card-topline{color:#c0c1cb}.bet-caption{color:#d0cbd3}.bet-value{color:#fff}.active .bet-value{color:var(--success-text)}
+.result-note.won,.winner-text,.player-row.winner span:last-child{color:var(--success-text)}.result-note.lost,.card-error{color:var(--danger-text)}
+.amount-control label,.amount-control button{color:#fff}.amount-control button{background:#454653}.quick-bets button{background:#353640;color:#f1f1f5}.quick-bets button.chosen{background:#5a5d6b;color:#fff}
+.bet-green{background:linear-gradient(#087b3d,#00612f);color:#fff;border-color:#57b77a}.bet-red{background:linear-gradient(#bd203d,#96152d);color:#fff;border-color:#ea7b8d}
+.all-green{background:#123d29;color:#a0efb8;border-color:#4d9a69}.all-red{background:#421c29;color:#ffb0bd;border-color:#b15c6c}.all-button:disabled{opacity:1;background:#262831;color:#aeb0bc;border-color:#4b4d58}
+.tabs button{background:#171922;color:#c4c6d0}.tabs button.active{background:#41434e;color:#fff}.list-head{color:#b8bac5}.player-row,.history-row{color:#ececf1}.player-row.winner{background:#1b382b;color:#fff}.empty-list{color:#c2c4ce}
+.dialog p,.rules,.menu-note{color:#d0d2dc}.menu-row{color:#fff}.menu-row svg{color:#d0d2dc}.menu-row b{color:#a2efbb}.dialog-action{background:#ffd400;color:#171717}.cash-bubbles span{background:#d7f7df;color:#164a2a}
