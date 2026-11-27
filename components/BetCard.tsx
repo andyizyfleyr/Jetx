@@ -6,8 +6,7 @@ import { useGame, type Bet } from '@/store/game';
 import { playSound } from '@/lib/audio';
 const money = (n: number) => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function BetCard({ bet, index }: { bet: Bet; index: number }) {
-  const [amount, setAmount] = useState('100');
+export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; index: number; amount: string; setAmount: (value: string) => void }) {
   const [error, setError] = useState('');
   const { multiplier, place, cancel, cash, sound, balance } = useGame();
   const update = (value: string) => { setAmount(value); setError(''); };

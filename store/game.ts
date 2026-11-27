@@ -7,7 +7,7 @@ export type Player = { name: string; stake: number; target: number; cashed: bool
 type Game = {
   phase: Phase; multiplier: number; countdown: number; balance: number; bets: Bet[];
   history: Round[]; players: Player[]; online: number; autoCash: boolean; autoTarget: number; autoPlay: boolean; sound: boolean; animations: boolean;
-  set: (patch: Partial<Game>) => void; place: (index: number, amount: number) => void; cancel: (index: number) => void;
+  set: (patch: Partial<Game>) => void; place: (index: number, amount: number) => void; placeAll: (amounts: number[]) => 'ok' | 'invalid' | 'insufficient' | 'none'; cancel: (index: number) => void;
   cash: (index: number) => number; cancelAll: () => void; cashAll: () => number; startFlight: () => void; crash: () => void; startWaiting: () => void;
 };
 const names = ['a..7', 'd..4', 'm..9', 'j..2', 's..8', 'k..1', 'b..5', 'r..3', 't..6', 'n..0'];
@@ -24,6 +24,20 @@ export const useGame = create<Game>((set, get) => ({
     const bets = s.bets.map((b, i) => i === index ? { amount, lastAmount: amount, status: 'queued' as const, result: undefined } : b);
     return { bets, balance: Math.round((s.balance - amount) * 100) / 100 };
   }),
+  // Place every currently empty card in one transaction, or none at all.
+  placeAll: amounts => {
+    const s = get();
+    const free = s.bets.map((bet, i) => bet.status === 'empty' ? i : -1).filter(i => i !== -1);
+    if (!free.length) return 'none';
+    const values = free.map(i => Math.round(amounts[i] * 100) / 100);
+    if (values.some(value => !Number.isFinite(value) || value < 1)) return 'invalid';
+    const totalCents = values.reduce((total, value) => total + Math.round(value * 100), 0);
+    if (totalCents > Math.round(s.balance * 100)) return 'insufficient';
+    set({ balance: (Math.round(s.balance * 100) - totalCents) / 100,
+      bets: s.bets.map((bet, i) => bet.status === 'empty' ? { ...bet, amount: Math.round(amounts[i] * 100) / 100, lastAmount: Math.round(amounts[i] * 100) / 100, status: 'queued', result: undefined } : bet),
+    });
+    return 'ok';
+  },
   cancel: index => set(s => {
     const bet = s.bets[index]; if (bet.status !== 'queued') return s;
     return { balance: Math.round((s.balance + bet.amount) * 100) / 100, bets: s.bets.map((b, i) => i === index ? { ...b, status: 'empty' as const } : b) };
