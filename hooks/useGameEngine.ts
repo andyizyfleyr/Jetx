@@ -2,6 +2,7 @@
 import { useEffect } from 'react';
 import { useGame } from '@/store/game';
 import { playSound } from '@/lib/audio';
+import { drawCrashPoint } from '@/lib/crash';
 
 export function useGameEngine() {
   useEffect(() => {
@@ -15,7 +16,7 @@ export function useGameEngine() {
         const remaining = Math.max(0, Math.ceil(5 - elapsed / 1000));
         if (remaining !== s.countdown) s.set({ countdown: remaining });
         if (remaining !== lastTick && remaining > 0) { lastTick = remaining; playSound('tick', s.sound); }
-        if (elapsed >= 5000) { crashPoint = Math.min(1000, Math.max(1, .97 / (1 - Math.random()))); s.startFlight(); }
+        if (elapsed >= 5000) { crashPoint = drawCrashPoint(); s.startFlight(); }
       } else if (s.phase === 'FLYING') {
         const multiplier = Math.exp(.00006 * elapsed);
         if (multiplier >= crashPoint) {
