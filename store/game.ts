@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 
+export const BET_COUNT = 2;
 export type Phase = 'WAITING' | 'FLYING' | 'CRASHED';
 export type Bet = { amount: number; status: 'empty' | 'queued' | 'active'; lastAmount: number; roundId?: number; result?: { type: 'won' | 'lost'; amount: number } };
 export type Round = { value: number; time: string };
@@ -23,7 +24,7 @@ export const useGame = create<Game>((set, get) => ({
   clearFeedback: id => set(s => s.feedback?.id === id ? { feedback: null } : s),
   syncReady: false, roundId: -1, syncNow: () => false, ping: null,
   phase: 'WAITING', multiplier: 1, countdown: 5, balance: 21329.85,
-  bets: Array.from({ length: 4 }, () => ({ amount: 100, status: 'empty', lastAmount: 0 })),
+  bets: Array.from({ length: BET_COUNT }, () => ({ amount: 100, status: 'empty', lastAmount: 0 })),
   history: initialHistory, players: [], online: 2060, autoCash: false, autoTarget: 2, autoPlay: false, sound: true, animations: true,
   set: patch => set(patch),
   place: (index, amount) => { if (!get().syncNow()) return; set(s => {
