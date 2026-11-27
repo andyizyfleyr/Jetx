@@ -20,10 +20,9 @@ export default function BetPanel() {
     setMessage(result === 'insufficient' ? 'Solde insuffisant pour placer toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants : minimum $ 1.00 par mise.' : result === 'none' ? 'Aucune mise libre.' : phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.');
   };
   return <div className="bet-panel">
-    <div className="panel-title"><div><span className="section-kicker">PRÊT AU DÉCOLLAGE</span><h2>Vos mises</h2></div><span className="panel-demo">ARGENT FICTIF</span></div>
     <div className="panel-controls">
       <div className="auto-control"><button className={`switch ${autoCash ? 'on' : ''}`} role="switch" aria-checked={autoCash} aria-label="Encaissement automatique" onClick={() => set({ autoCash: !autoCash })}><span /></button><span>Encaissement auto</span></div>
-      <button className={`auto-play ${autoPlay ? 'selected' : ''}`} onClick={() => set({ autoPlay: !autoPlay })} aria-pressed={autoPlay}><RefreshCw size={16} /> Jeu auto</button>
+      <button className={`auto-play ${autoPlay ? 'selected' : ''}`} onClick={() => set({ autoPlay: !autoPlay })} aria-pressed={autoPlay}>Jeu auto <RefreshCw size={18} /></button>
     </div>
     {autoCash && <div className="auto-target-row"><span>Encaisser automatiquement à</span><label className="target"><input aria-label="Multiplicateur cible" type="number" min="1.01" step="0.1" value={autoTarget} onChange={e => set({ autoTarget: Math.max(1.01, Number(e.target.value) || 1.01) })} />x</label></div>}
     <div className="bet-grid">{bets.map((b, i) => <BetCard key={i} bet={b} index={i} amount={amounts[i]} setAmount={value => { setAmounts(previous => previous.map((amount, j) => i === j ? value : amount)); setMessage(''); }} />)}</div>
