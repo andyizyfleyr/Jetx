@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { useGame, makePlayers, type Bet, type Phase } from '@/store/game';
 import { playSound, setAudioEnabled, stopEngine, unlockAudio, updateEngine } from '@/lib/audio';
 import type { SharedRound } from '@/lib/sharedRounds';
+import { isValidBetAmount } from '@/lib/betLimits';
 
 const MAX_CLOCK_AGE = 20000;
 const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -55,11 +56,12 @@ export function useGameEngine() {
         if (now >= target.crashAt) { lostCount++; lostTotal += b.amount; return { ...b, status: 'empty', roundId: undefined, result: { type: 'lost', amount: b.amount, roundId: target.id } }; }
         return b.status === 'active' ? b : { ...b, status: 'active' };
       });
-      let replayed = 0, skipped = 0;
+      let replayed = 0, skipped = 0, invalidAuto = 0;
       // Replaying is local and only happens when the client observes the waiting phase.
       if (!firstSync && round.id !== s.roundId && phase === 'WAITING' && s.autoPlay) {
         bets = bets.map(b => {
           if (b.status !== 'empty' || b.lastAmount <= 0) return b;
+          if (!isValidBetAmount(b.lastAmount)) { invalidAuto++; return b; }
           if (b.lastAmount > balance) { skipped++; return b; }
           balance -= b.lastAmount; replayed++;
           return { ...b, amount: b.lastAmount, status: 'queued', roundId: round.id, result: undefined };
@@ -82,7 +84,8 @@ export function useGameEngine() {
       if (refunded) notes.push(`Mises remboursées après déconnexion : ${money(refunded)} ₣.`);
       if (replayed) notes.push('Jeu auto : mises replacées.');
       if (skipped) notes.push('Solde insuffisant pour certaines mises.');
-      if (notes.length) s.notify(notes.join(' '), lostCount || skipped ? 'error' : 'success');
+      if (invalidAuto) notes.push('Jeu auto : mise comprise entre 200 ₣ et 10 000 ₣ requise.');
+      if (notes.length) s.notify(notes.join(' '), lostCount || skipped || invalidAuto ? 'error' : 'success');
       if (!firstSync && phaseChanged && phase === 'CRASHED') playSound('crash', s.sound);
       if (phase === 'WAITING') {
         const tick = Math.ceil((round.flightStart - now) / 1000);

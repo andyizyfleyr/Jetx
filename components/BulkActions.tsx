@@ -1,6 +1,7 @@
 'use client';
 import { useGame } from '@/store/game';
 import { playSound } from '@/lib/audio';
+import { isValidBetAmount } from '@/lib/betLimits';
 const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Kept outside the scrolling area so round actions are always within reach. */
@@ -8,15 +9,15 @@ export default function BulkActions({ amounts }: { amounts: string[] }) {
   const { bets, phase, multiplier, placeAll, cancelAll, cashAll, sound, notify, set, syncReady } = useGame();
   const active = bets.filter(b => b.status === 'active'), queued = bets.filter(b => b.status === 'queued'), free = bets.filter(b => b.status === 'empty');
   const values = amounts.map(value => Number(value.replace(',', '.')));
-  const totalPlace = bets.reduce((sum, bet, i) => sum + (bet.status === 'empty' && Number.isFinite(values[i]) && values[i] >= 1 ? Math.round(values[i] * 100) / 100 : 0), 0);
+  const totalPlace = bets.reduce((sum, bet, i) => sum + (bet.status === 'empty' && isValidBetAmount(values[i]) ? Math.round(values[i] * 100) / 100 : 0), 0);
   const totalQueued = queued.reduce((sum, bet) => sum + bet.amount, 0);
   const totalActive = active.reduce((sum, bet) => sum + Math.floor(bet.amount * multiplier * 100) / 100, 0);
   const placeEverything = () => {
-    const invalid = bets.map((bet, i) => bet.status === 'empty' && (!Number.isFinite(values[i]) || Math.round(values[i] * 100) < 100) ? i : -1).filter(i => i >= 0);
+    const invalid = bets.map((bet, i) => bet.status === 'empty' && !isValidBetAmount(values[i]) ? i : -1).filter(i => i >= 0);
     set({ invalidBets: invalid });
     const result = placeAll(values);
     if (result === 'offline') return;
-    const text = result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : minimum 1,00 ₣.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
+    const text = result === 'insufficient' ? 'Solde insuffisant pour toutes les mises libres.' : result === 'invalid' ? 'Vérifiez les montants surlignés : entre 200 ₣ et 10 000 ₣.' : result === 'none' ? 'Aucune mise libre.' : useGame.getState().phase === 'WAITING' ? 'Mises placées pour cette manche.' : 'Mises placées pour la prochaine manche.';
     notify(text, result === 'ok' ? 'success' : 'error');
   };
   return <div className="bulk-fixed">
