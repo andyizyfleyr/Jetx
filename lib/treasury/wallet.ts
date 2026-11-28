@@ -9,9 +9,10 @@ type Wager = { player_id: string; game: GameName; stake: string; funded_stake: s
 // withTreasuryTransaction. They are internal: server game engines must validate
 // player identity, stake limits, free-bet entitlement and every outcome.
 export async function createDemoWallet(tx: PoolClient, playerId: string, game: GameName, operationId: string) {
-  const initial = game === 'skyjet' ? BigInt(2132985) : BigInt(3000000);
-  const result = await tx.query(`INSERT INTO demo_wallets (player_id, game, balance) VALUES ($1,$2,$3)
-    ON CONFLICT (player_id, game) DO NOTHING RETURNING balance`, [playerId, game, initial.toString()]);
+  // Per-game rows are retained solely to satisfy historical foreign keys.
+  await tx.query('INSERT INTO demo_wallets (player_id, game, balance) VALUES ($1,$2,0) ON CONFLICT (player_id, game) DO NOTHING', [playerId, game]);
+  const initial = BigInt(3000000);
+  const result = await tx.query('INSERT INTO demo_shared_wallets (player_id, balance) VALUES ($1,$2) ON CONFLICT (player_id) DO NOTHING RETURNING balance', [playerId, initial.toString()]);
   if (result.rows.length) await tx.query("INSERT INTO demo_wallet_events (operation_id,player_id,game,kind,amount,balance_after) VALUES ($1,$2,$3,'initial',$4,$4)", [operationId, playerId, game, initial.toString()]);
   return result.rows.length > 0;
 }
@@ -26,7 +27,7 @@ export async function openWager(tx: PoolClient, args: { playerId: string; game: 
     if (!ev.rows.length) throw new TreasuryError('BET_ALREADY_EXISTS');
     return { applied: false };
   }
-  const balance = await tx.query<{ balance: string }>('UPDATE demo_wallets SET balance = balance - $3::bigint WHERE player_id=$1 AND game=$2 AND balance >= $3::bigint RETURNING balance', [args.playerId, args.game, args.fundedStake.toString()]);
+  const balance = await tx.query<{ balance: string }>('UPDATE demo_shared_wallets SET balance = balance - $2::bigint WHERE player_id=$1 AND balance >= $2::bigint RETURNING balance', [args.playerId, args.fundedStake.toString()]);
   if (!balance.rows[0]) throw new TreasuryError('INSUFFICIENT_BALANCE');
   await reserveRisk(tx, { ...args, proposedRisk: args.risk });
   await tx.query("INSERT INTO demo_wagers(bet_id,player_id,game,stake,funded_stake,status) VALUES ($1,$2,$3,$4,$5,'open')", [args.betId,args.playerId,args.game,args.stake.toString(),args.fundedStake.toString()]);
@@ -48,7 +49,7 @@ export async function finishWager(tx: PoolClient, args: { playerId: string; betI
   const funded = BigInt(bet.funded_stake);
   if (bet.status !== 'open' || (args.cancel && args.payout !== funded)) throw new TreasuryError('INVALID_SETTLEMENT');
   await closeRisk(tx, { betId: args.betId, playerId: args.playerId, operationId: args.operationId, cancel: args.cancel, houseLoss: args.cancel ? BigInt(0) : args.payout - funded });
-  const balance = await tx.query<{ balance: string }>('UPDATE demo_wallets SET balance=balance+$3::bigint WHERE player_id=$1 AND game=$2 RETURNING balance', [args.playerId,bet.game,args.payout.toString()]);
+  const balance = await tx.query<{ balance: string }>('UPDATE demo_shared_wallets SET balance=balance+$2::bigint WHERE player_id=$1 RETURNING balance', [args.playerId,args.payout.toString()]);
   await tx.query('UPDATE demo_wagers SET status=$2, payout=$3 WHERE bet_id=$1', [args.betId,args.cancel ? 'cancelled':'settled',args.payout.toString()]);
   await tx.query('INSERT INTO demo_wallet_events(operation_id,player_id,game,bet_id,kind,amount,balance_after) VALUES ($1,$2,$3,$4,$5,$6,$7)', [args.operationId,args.playerId,bet.game,args.betId,args.cancel?'refund':'payout',args.payout.toString(),balance.rows[0].balance]);
   return { applied: true };

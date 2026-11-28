@@ -12,7 +12,7 @@ async function read(tx:PoolClient,playerId:string) {
  const {rows} = await tx.query<{state:State}>('SELECT state FROM demo_chicken_state WHERE player_id=$1 FOR UPDATE',[playerId]);
  return rows[0]?.state ?? initial;
 }
-async function view(tx:PoolClient,playerId:string,state:State){const {rows}=await tx.query<{balance:string}>('SELECT balance FROM demo_wallets WHERE player_id=$1 AND game=$2',[playerId,'pilot-chicken']);return {...state,balance:Number(rows[0].balance)/100};}
+async function view(tx:PoolClient,playerId:string,state:State){const {rows}=await tx.query<{balance:string}>('SELECT balance FROM demo_shared_wallets WHERE player_id=$1',[playerId]);return {...state,balance:Number(rows[0].balance)/100};}
 export async function chickenSnapshot(tx:PoolClient,playerId:string){await createDemoWallet(tx,playerId,'pilot-chicken',randomUUID()); return view(tx,playerId,await read(tx,playerId));}
 export async function chickenAction(tx:PoolClient,playerId:string,actionId:string,action:Action){
  const prior=await tx.query<{request:Action;response:unknown}>('SELECT request,response FROM demo_chicken_actions WHERE player_id=$1 AND action_id=$2',[playerId,actionId]);
