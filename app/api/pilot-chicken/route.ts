@@ -9,7 +9,7 @@ const name='chicken_session';
 let pool:Pool | undefined;
 function db(){if(process.env.DEMO_CENTRAL_ENABLED !== '1' || !process.env.DATABASE_URL) throw new TreasuryError('UNAVAILABLE');return pool ??= new Pool({connectionString:process.env.DATABASE_URL,max:3,connectionTimeoutMillis:5000,idleTimeoutMillis:10000});}
 const hash=(token:string)=>createHash('sha256').update(token).digest('hex');
-function validOrigin(request:NextRequest){try{return new URL(request.headers.get('origin')||'').host===(request.headers.get('x-forwarded-host')||request.headers.get('host'));}catch{return false;}}
+function validOrigin(request:NextRequest){try{const source=request.headers.get('origin')||request.headers.get('referer')||'';return new URL(source).host===(request.headers.get('x-forwarded-host')||request.headers.get('host'));}catch{return false;}}
 function fail(e:unknown){if(e instanceof TreasuryError && /^(RISK_|INVALID_|NO_ACTIVE|GAME_IN|FREE_USED|INSUFFICIENT)/.test(e.code)) return NextResponse.json({error:e.code},{status:409});console.error('Pilot Chicken server unavailable', e instanceof Error ? e.message : 'unknown');return NextResponse.json({error:'UNAVAILABLE'},{status:503});}
 export async function GET(request:NextRequest){
  try{

@@ -1,0 +1,30 @@
+'use client';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { Difficulty } from '@/lib/pilot-chicken/format';
+import type { Result } from './useGame';
+type Phase='idle'|'playing'|'won'|'lost';
+type Remote={balance:number;difficulty:Difficulty;free:boolean;freeAvailable:boolean;phase:Phase;step:number;stake:number;multiplier:number;history:Result[]};
+type State=Remote & {amount:number;mode:'bet'|'free';message:string;event:number;busy:boolean;ready:boolean};
+const initial:State={balance:0,amount:500,difficulty:'Easy',mode:'bet',free:false,freeAvailable:false,phase:'idle',step:0,stake:0,multiplier:1,history:[],message:'Connexion…',event:0,busy:false,ready:false};
+export function useRemoteGame(enabled:boolean){
+ const [game,setGame]=useState<State>(initial);const state=useRef(game);const busy=useRef(false);
+ const update=useCallback((change:(g:State)=>State)=>{state.current=change(state.current);setGame(state.current);},[]);
+ const snapshot=useCallback(async()=>{const r=await fetch('/api/pilot-chicken',{cache:'no-store'});if(!r.ok)throw Error('Connexion au jeu indisponible.');const data:Remote=await r.json();update(g=>({...g,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):g.mode,ready:true,message:'',event:g.event+1}));},[update]);
+ useEffect(()=>{if(!enabled)return;let live=true;void snapshot().catch(()=>{if(live)update(g=>({...g,ready:false,message:'Connexion au jeu indisponible. Rechargez la page.'}));});return()=>{live=false;};},[enabled,snapshot,update]);
+ const act=useCallback(async(kind:'start'|'next'|'cash')=>{
+  if(busy.current||!state.current.ready)return;busy.current=true;update(g=>({...g,busy:true,message:''}));
+  const g=state.current;const body=kind==='start'?{kind,id:crypto.randomUUID(),amount:g.amount,difficulty:g.difficulty,free:g.mode==='free'}:{kind,id:crypto.randomUUID()};
+  try{
+   // Retry the identical operation id after a transient failure, never create a second bet.
+   let response:Response|undefined;for(let attempt=0;attempt<2;attempt++){try{response=await fetch('/api/pilot-chicken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});break;}catch{if(attempt)throw Error('Connexion interrompue.');}}
+   if(!response)throw Error('Connexion interrompue.');
+   const data=await response.json();if(!response.ok){const code=String(data.error||'');throw Error(code.startsWith('RISK_')?'Limite de gain atteinte. Vous pouvez encaisser.':code==='INSUFFICIENT_BALANCE'?'Solde insuffisant.':'Action indisponible.');}
+   update(v=>({...v,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):v.mode,message:'',ready:true,event:v.event+1}));
+  }catch(e){try{await snapshot();}catch{update(v=>({...v,ready:false}));}update(v=>({...v,message:e instanceof Error?e.message:'Connexion interrompue.'}));}
+  finally{busy.current=false;update(v=>({...v,busy:false}));}
+ },[snapshot,update]);
+ const setAmount=useCallback((v:number)=>update(g=>g.phase==='playing'?g:{...g,amount:Math.max(100,Math.min(100000,Math.round(Number.isFinite(v)?v:100)))}),[update]);
+ const difficulty=useCallback((v:Difficulty)=>update(g=>g.phase==='playing'?g:{...g,difficulty:v}),[update]);
+ const setMode=useCallback((v:'bet'|'free')=>update(g=>g.phase==='playing'?g:{...g,mode:v}),[update]);
+ return {game,setAmount,difficulty,setMode,start:()=>void act('start'),next:()=>void act('next'),cash:()=>void act('cash')};
+}
