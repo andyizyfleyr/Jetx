@@ -25,14 +25,15 @@ async function settleDue(tx:PoolClient,now:number){
   await tx.query("UPDATE demo_skyjet_bets SET status='settled' WHERE bet_id=$1",[b.bet_id]);
  }
 }
-async function snapshot(tx:PoolClient,playerId:string,now:number){
+async function snapshot(tx:PoolClient,playerId:string,now:number,round?:SharedRound){
  const wallet=await tx.query<{balance:string}>('SELECT balance FROM demo_shared_wallets WHERE player_id=$1',[playerId]);
  const bets=(await openBets(tx,playerId)).map(b=>({slot:b.slot,amount:Number(b.stake)/100,roundId:Number(b.round_id),status:now<b.flight_start?'queued':'active',capPayout:Number(b.cap_payout)/100}));
  const risk=await readRiskSnapshot(tx,playerId);
- return {balance:Number(wallet.rows[0].balance)/100,bets,maxProfit:Number(risk.equity/BigInt(100))/100,riskBudgetCents:Number(remainingRisk(risk))};
+ const used=round && now>=round.flightStart && now<round.crashAt ? await tx.query<{slot:number}>("SELECT DISTINCT slot FROM demo_skyjet_bets WHERE player_id=$1 AND round_id=$2 AND status<>'cancelled'",[playerId,round.id]) : {rows:[]};
+ return {balance:Number(wallet.rows[0].balance)/100,bets,usedRoundId:round?.id??null,usedSlots:used.rows.map(r=>r.slot),maxProfit:Number(risk.equity/BigInt(100))/100,riskBudgetCents:Number(remainingRisk(risk))};
 }
-export async function skySnapshot(tx:PoolClient,playerId:string,now:number){await createDemoWallet(tx,playerId,'skyjet',randomUUID());await settleDue(tx,now);return snapshot(tx,playerId,now);}
-export async function skyAction(tx:PoolClient,playerId:string,actionId:string,action:Action,round:SharedRound,now:number){
+export async function skySnapshot(tx:PoolClient,playerId:string,now:number,round?:SharedRound){await createDemoWallet(tx,playerId,'skyjet',randomUUID());await settleDue(tx,now);return snapshot(tx,playerId,now,round);}
+export async function skyAction(tx:PoolClient,playerId:string,actionId:string,action:Action,round:SharedRound,now:number,next?:SharedRound){
  const prior=await tx.query<{request:Action;response:unknown}>('SELECT request,response FROM demo_skyjet_actions WHERE player_id=$1 AND action_id=$2',[playerId,actionId]);
  if(prior.rows[0]){const a=prior.rows[0].request;if(a.kind!==action.kind||a.slot!==action.slot||(a.kind==='place'&&action.kind==='place'&&(a.amount!==action.amount||a.autoTarget!==action.autoTarget)))throw new TreasuryError('IDEMPOTENCY_CONFLICT');return prior.rows[0].response;}
  await createDemoWallet(tx,playerId,'skyjet',randomUUID());await settleDue(tx,now);
@@ -40,7 +41,13 @@ export async function skyAction(tx:PoolClient,playerId:string,actionId:string,ac
  const bet=(await openBets(tx,playerId)).find(b=>b.slot===action.slot);
  if(action.kind==='place'){
   if(bet)throw new TreasuryError('GAME_IN_PROGRESS');
-  if(now<round.start||now>=round.flightStart)throw new TreasuryError('INVALID_ROUND');
+  if(now<round.start||now>=round.end)throw new TreasuryError('INVALID_ROUND');
+  const targetRound=now<round.flightStart ? round : next;
+  if(!targetRound || targetRound.id!==round.id+1 && targetRound.id!==round.id)throw new TreasuryError('INVALID_ROUND');
+  if(now>=round.flightStart && now<round.crashAt){
+   const used=await tx.query("SELECT 1 FROM demo_skyjet_bets WHERE player_id=$1 AND slot=$2 AND round_id=$3 AND status<>'cancelled' LIMIT 1",[playerId,action.slot,round.id]);
+   if(used.rowCount)throw new TreasuryError('GAME_IN_PROGRESS');
+  }
   if(!Number.isSafeInteger(action.amount)||action.amount<20000||action.amount>1000000 || (action.autoTarget!==null&&(!Number.isFinite(action.autoTarget)||action.autoTarget<1.01||action.autoTarget>10000)))throw new TreasuryError('INVALID_BET');
   const equity=(await tx.query<{equity:string}>('SELECT equity FROM demo_treasury WHERE id=1')).rows[0];
   // Reserve the maximum net payout up front. Automatic cashout at the cap is
@@ -48,7 +55,7 @@ export async function skyAction(tx:PoolClient,playerId:string,actionId:string,ac
   const stake=BigInt(action.amount), profitCap=skyjetProfitLimit(stake,BigInt(equity.equity)/BigInt(100),action.autoTarget),betId=randomUUID();
   if(profitCap<=BigInt(0))throw new TreasuryError('RISK_CAPACITY');
   await openWager(tx,{playerId,game:'skyjet',betId,operationId:actionId,stake,fundedStake:stake,risk:profitCap});
-  await tx.query("INSERT INTO demo_skyjet_bets(bet_id,player_id,slot,round_id,flight_start,crash_at,crash,cap_payout,auto_target,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'open')",[betId,playerId,action.slot,round.id,round.flightStart,round.crashAt,round.crash,(stake+profitCap).toString(),action.autoTarget]);
+  await tx.query("INSERT INTO demo_skyjet_bets(bet_id,player_id,slot,round_id,flight_start,crash_at,crash,cap_payout,auto_target,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'open')",[betId,playerId,action.slot,targetRound.id,targetRound.flightStart,targetRound.crashAt,targetRound.crash,(stake+profitCap).toString(),action.autoTarget]);
  }else{
   if(!bet)throw new TreasuryError('NO_ACTIVE_GAME');
   if(action.kind==='cancel'){
@@ -62,7 +69,7 @@ export async function skyAction(tx:PoolClient,playerId:string,actionId:string,ac
    await tx.query("UPDATE demo_skyjet_bets SET status='settled' WHERE bet_id=$1",[bet.bet_id]);
   }else throw new TreasuryError('INVALID_ACTION');
  }
- const response=await snapshot(tx,playerId,now);
+ const response=await snapshot(tx,playerId,now,round);
  await tx.query('INSERT INTO demo_skyjet_actions(player_id,action_id,request,response) VALUES($1,$2,$3::jsonb,$4::jsonb)',[playerId,actionId,JSON.stringify(action),JSON.stringify(response)]);
  return response;
 }
