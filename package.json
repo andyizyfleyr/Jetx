@@ -25,6 +25,7 @@
     "zustand": "^5.1.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.6.1",
     "@tailwindcss/turbopack": "4.3.3",
     "@types/howler": "^2.2.13",
     "@types/node": "^20",
