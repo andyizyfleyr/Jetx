@@ -222,3 +222,10 @@
 .phone .bulk-fixed .all-button{border:1px solid #ffffff80;border-radius:15px;color:#fff;font-weight:850;text-shadow:0 1px 3px #0007;box-shadow:inset 0 1px 2px #ffffff55,0 3px 6px #0005}
 .phone .bulk-fixed .all-place,.phone .bulk-fixed .all-green{background:linear-gradient(#00c74c,#009e37)}
 .phone .bulk-fixed .all-red{background:linear-gradient(#e93450,#cd1030)}
+/* Suppress the browser's pull-to-refresh while retaining normal scrolling. */
+html,body{overscroll-behavior-y:contain}
+.pull-refresh{position:fixed;top:0;left:50%;z-index:9999;display:flex;align-items:center;gap:8px;pointer-events:none;border:1px solid #ffffff26;border-radius:30px;padding:10px 14px;background:#24252c;color:#f5f5f6;box-shadow:0 6px 24px #0007;font-size:11px;font-weight:700;white-space:nowrap;transition:opacity .18s ease}
+.pull-refresh svg{color:#f5ce57;flex:none}
+.pull-refresh.is-refreshing svg{animation:pull-refresh-spin .7s linear infinite}
+@keyframes pull-refresh-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.pull-refresh.is-refreshing svg{animation-duration:1.5s}}

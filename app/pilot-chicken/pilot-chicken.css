@@ -14,6 +14,7 @@
 .pc-app{overflow:clip;overflow-y:visible}
 .pc-scene-host,.pc-scene-host canvas{touch-action:pan-y!important}
 @media(max-width:600px){
-  .pc-scene{height:clamp(280px,55dvh,520px);max-height:none}
-  .pc-layout{padding-bottom:max(20px,env(safe-area-inset-bottom))}
+  .pc-scene{height:calc(100dvh - 345px);min-height:200px;max-height:570px}
+  .pc-layout{padding-bottom: max(4px, env(safe-area-inset-bottom))}
+  .pc-footer{display:none}
 }
