@@ -20,3 +20,4 @@
 }
 
 a.pc-menu-row{text-decoration:none}
+.pc-shared-info{position:relative;min-width:0;flex:1;display:flex;align-items:center;justify-content:space-around;gap:6px;border-radius:22px;background:#202023;padding:4px 9px;color:#e5e5ed;font-size:10px}.pc-shared-info>strong{white-space:nowrap;color:#a8e8b7}.pc-shared-info details{position:relative}.pc-shared-info summary{cursor:pointer;white-space:nowrap;color:#b2a9cc}.pc-shared-info details>div{position:absolute;z-index:12;right:0;top:24px;width:min(310px,85vw);max-height:200px;overflow:auto;background:#27262e;border:1px solid #ffffff26;border-radius:12px;padding:10px;box-shadow:0 12px 25px #000a}.pc-shared-info details span,.pc-shared-info details small{display:block;overflow-wrap:anywhere;padding:3px;color:#d3d0dc}.pc-shared-info details small{font-size:9px}
