@@ -9,7 +9,7 @@ const os = require('node:os');
 const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'chicken-test-'));
-for (const [name, source] of [['risk','lib/treasury/risk.ts'],['transactions','lib/treasury/transactions.ts'],['wallet','lib/treasury/wallet.ts'],['chicken','lib/treasury/chicken.ts'],['format','lib/pilot-chicken/format.ts']]) {
+for (const [name, source] of [['transactions','lib/treasury/transactions.ts'],['wallet','lib/treasury/wallet.ts'],['chicken','lib/treasury/chicken.ts'],['format','lib/pilot-chicken/format.ts']]) {
   const input = fs.readFileSync(path.join(root,source),'utf8').replace("import 'server-only';",'');
   let out = ts.transpile(input,{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020});
   for (const dependency of ['risk','transactions','wallet']) out=out.replace(`require("./${dependency}")`,`require("./${dependency}.cjs")`);
@@ -23,7 +23,7 @@ const id=n=>`${String(n).padStart(8,'0')}-1111-4111-8111-111111111111`;
 test('chicken server applies, retries and restores an action atomically', async () => {
   const db=new PGlite();
   try {
-    for(const migration of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql','003_fictitious_chicken.sql','005_shared_wallet.sql']) await db.exec(fs.readFileSync(path.join(root,'db/migrations',migration),'utf8'));
+    for(const migration of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql','003_fictitious_chicken.sql','005_shared_wallet.sql','007_remove_house_bank.sql']) await db.exec(fs.readFileSync(path.join(root,'db/migrations',migration),'utf8'));
     const pool={connect:async()=>({query:async(q,p)=>{const r=await db.query(q,p);return {...r,rowCount:r.rows.length||r.affectedRows||0}},release(){}})};
     const tx=fn=>withTreasuryTransaction(pool,fn), player=id(1), action={kind:'start',amount:500,difficulty:'Easy',free:false};
     const first=await tx(t=>chickenAction(t,player,id(2),action));
@@ -43,13 +43,27 @@ test('migration preserves both balances and both games debit the same wallet', a
     const player=id(10);
     await db.query("INSERT INTO demo_wallets(player_id,game,balance) VALUES ($1,'skyjet',100000),($1,'pilot-chicken',200000)",[player]);
     await db.exec(fs.readFileSync(path.join(root,'db/migrations/005_shared_wallet.sql'),'utf8'));
+    await db.exec(fs.readFileSync(path.join(root,'db/migrations/007_remove_house_bank.sql'),'utf8'));
     const pool={connect:async()=>({query:async(q,p)=>{const r=await db.query(q,p);return {...r,rowCount:r.rows.length||r.affectedRows||0}},release(){}})};
     const tx=fn=>withTreasuryTransaction(pool,fn);
     assert.equal((await tx(t=>chickenSnapshot(t,player))).balance,3000);
-    await tx(async t=>{await createDemoWallet(t,player,'skyjet',id(11));await openWager(t,{playerId:player,game:'skyjet',betId:id(12),operationId:id(13),stake:50000n,fundedStake:50000n,risk:0n});});
+    await tx(async t=>{await createDemoWallet(t,player,'skyjet',id(11));await openWager(t,{playerId:player,game:'skyjet',betId:id(12),operationId:id(13),stake:50000n,fundedStake:50000n});});
     assert.equal((await tx(t=>chickenSnapshot(t,player))).balance,2500);
     await tx(t=>finishWager(t,{playerId:player,betId:id(12),operationId:id(14),payout:50000n,cancel:true}));
     assert.equal((await tx(t=>chickenSnapshot(t,player))).balance,3000);
     await assert.rejects(db.query("UPDATE demo_wallets SET balance=0 WHERE player_id=$1",[player]));
   } finally { await db.close(); }
+});
+test('chicken can cross and pay even with zero legacy house capital', async () => {
+  const db=new PGlite(); const crypto=require('node:crypto'); const oldRandom=crypto.randomInt;
+  try {
+    for(const m of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql','003_fictitious_chicken.sql','005_shared_wallet.sql','007_remove_house_bank.sql'])await db.exec(fs.readFileSync(path.join(root,'db/migrations',m),'utf8'));
+    await db.query('UPDATE demo_treasury SET equity=0');
+    const pool={connect:async()=>({query:async(q,p)=>{const r=await db.query(q,p);return {...r,rowCount:r.rows.length||r.affectedRows||0}},release(){}})};
+    const tx=fn=>withTreasuryTransaction(pool,fn),player=id(31);
+    await tx(t=>chickenAction(t,player,id(32),{kind:'start',amount:10000,difficulty:'Hard',free:false}));
+    crypto.randomInt=()=>999999;
+    let result;for(let step=0;step<24;step++)result=await tx(t=>chickenAction(t,player,require('node:crypto').randomUUID(),{kind:'next'}));
+    assert.equal(result.phase,'won');assert.ok(result.balance>30000);assert.equal((await db.query('SELECT equity FROM demo_treasury')).rows[0].equity,0);
+  } finally {crypto.randomInt=oldRandom;await db.close();}
 });

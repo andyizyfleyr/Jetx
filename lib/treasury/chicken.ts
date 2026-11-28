@@ -3,7 +3,7 @@ import { randomInt, randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import { multiplierAt, riskAt, difficulties, type Difficulty } from '../pilot-chicken/format';
 import { createDemoWallet, openWager, finishWager } from './wallet';
-import { reserveRisk, TreasuryError } from './transactions';
+import { TreasuryError } from './transactions';
 
 type State = { phase:'idle'|'playing'|'won'|'lost'; step:number; stake:number; multiplier:number; difficulty:Difficulty; free:boolean; freeAvailable:boolean; betId:string|null; history: {id:string; multiplier:number; bet:number; payout:number; won:boolean; free:boolean}[] };
 type Action = {kind:'start'; amount:number; difficulty:Difficulty; free:boolean} | {kind:'next'|'cash'};
@@ -23,14 +23,13 @@ export async function chickenAction(tx:PoolClient,playerId:string,actionId:strin
   if(!Number.isSafeInteger(action.amount)||action.amount<100||action.amount>100000||!difficulties.includes(action.difficulty)||typeof action.free!=='boolean') throw new TreasuryError('INVALID_BET');
   if(action.free&&!state.freeAvailable) throw new TreasuryError('FREE_USED');
   const stake=action.free?500:action.amount,betId=randomUUID(),funded=action.free?BigInt(0):BigInt(stake*100);
-  await openWager(tx,{playerId,game:'pilot-chicken',betId,operationId:actionId,stake:BigInt(stake*100),fundedStake:funded,risk:action.free?BigInt(stake*100):BigInt(0)});
+  await openWager(tx,{playerId,game:'pilot-chicken',betId,operationId:actionId,stake:BigInt(stake*100),fundedStake:funded});
   state={...state,phase:'playing',step:0,stake,multiplier:1,difficulty:action.difficulty,free:action.free,freeAvailable:action.free?false:state.freeAvailable,betId};
  } else {
   if(state.phase!=='playing'||!state.betId)throw new TreasuryError('NO_ACTIVE_GAME');
   const payoutAt=(m:number)=>Math.floor(state.stake*m)*100;
   if(action.kind==='next'){
-   const step=state.step+1,multiplier=multiplierAt(step,state.difficulty),payout=payoutAt(multiplier),funded=state.free?0:state.stake*100;
-   await reserveRisk(tx,{playerId,game:'pilot-chicken',betId:state.betId,operationId:actionId,proposedRisk:BigInt(Math.max(0,payout-funded))});
+   const step=state.step+1,multiplier=multiplierAt(step,state.difficulty),payout=payoutAt(multiplier);
    if(randomInt(1000000)<Math.round(riskAt(step,state.difficulty)*1000000)){
     await finishWager(tx,{playerId,betId:state.betId,operationId:randomUUID(),payout:BigInt(0)});
     const history=[{id:state.betId,multiplier:state.multiplier,bet:state.stake,payout:0,won:false,free:state.free},...state.history].slice(0,20);
