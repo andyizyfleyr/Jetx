@@ -7,14 +7,14 @@ import BetCard from './BetCard';
 import { centralSkyEnabled } from '@/lib/centralSky';
 
 export default function BetPanel({ amounts, setAmounts }: { amounts: string[]; setAmounts: React.Dispatch<React.SetStateAction<string[]>> }) {
-  const {bets,autoCash,autoTarget,autoPlay,maxProfit,set,notify}=useGame(useShallow(s=>({bets:s.bets,autoCash:s.autoCash,autoTarget:s.autoTarget,autoPlay:s.autoPlay,maxProfit:s.maxProfit,set:s.set,notify:s.notify})));
+  const {bets,autoCash,autoTarget,autoPlay,maxProfit,riskBudgetCents,set,notify}=useGame(useShallow(s=>({bets:s.bets,autoCash:s.autoCash,autoTarget:s.autoTarget,autoPlay:s.autoPlay,maxProfit:s.maxProfit,riskBudgetCents:s.riskBudgetCents,set:s.set,notify:s.notify})));
   const [draft, setDraft] = useState(() => String(autoTarget));
   const [editing, setEditing] = useState(false);
   const applyTarget = () => {
     const value = Number(draft.replace(',', '.'));
-    if (!draft.trim() || !Number.isFinite(value) || value < 1.01) {
+    if (!draft.trim() || !Number.isFinite(value) || value < 1.01 || value > 10000) {
       setDraft(String(autoTarget));
-      notify(`Cible invalide : minimum 1.01x. Cible conservée : ${autoTarget.toFixed(2)}x.`, 'error');
+      notify(`Cible invalide : entre 1.01x et 10000x. Cible conservée : ${autoTarget.toFixed(2)}x.`, 'error');
     } else {
       set({ autoTarget: value });
       setDraft(String(value));
@@ -27,7 +27,7 @@ export default function BetPanel({ amounts, setAmounts }: { amounts: string[]; s
       <button className={`auto-play ${autoPlay ? 'selected' : ''}`} disabled={centralSkyEnabled} title={centralSkyEnabled?'Indisponible pendant la migration serveur':undefined} onClick={() => set({ autoPlay: !autoPlay })} aria-pressed={autoPlay}>Jeu auto <RefreshCw size={18} /></button>
     </div>
     {autoCash && <div className="auto-target-row"><div className="target-description"><span>Encaisser automatiquement à</span>{editing && <small>Cible active : {autoTarget.toFixed(2)}x jusqu’à validation</small>}</div><label className="target"><input aria-label="Multiplicateur cible, minimum 1,01" type="text" inputMode="decimal" autoComplete="off" value={draft} onFocus={e => { setEditing(true); e.currentTarget.select(); }} onChange={e => { if (/^\d*(?:[.,]\d*)?$/.test(e.target.value)) setDraft(e.target.value); }} onBlur={applyTarget} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />x</label></div>}
-    {centralSkyEnabled && <div style={{fontSize:11,color:"#a5a7b1",paddingBottom:6}}>Gain net maximum par mise : {maxProfit.toLocaleString("fr-FR")} ₣ · encaissement automatique au plafond</div>}
+    {centralSkyEnabled && <div style={{fontSize:11,color:"#a5a7b1",paddingBottom:6}}>Gain net maximum par mise : {maxProfit.toLocaleString("fr-FR")} ₣ · encaissement automatique au plafond<br/>Capacité disponible : {(riskBudgetCents/100).toLocaleString("fr-FR",{maximumFractionDigits:2})} ₣ de gain net potentiel pour vos nouvelles mises.</div>}
     <div className="bet-grid">{bets.map((b, i) => <BetCard key={i} bet={b} index={i} amount={amounts[i]} setAmount={value => setAmounts(previous => previous.map((amount, j) => i === j ? value : amount))} />)}</div>
   </div>;
 }

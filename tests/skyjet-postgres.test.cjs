@@ -17,8 +17,8 @@ test('auto cashout reserves its actual maximum and remains fully covered', {skip
   const tx=fn=>withTreasuryTransaction(pool,fn);
   for(let i=0;i<10;i++)await tx(t=>reserveRisk(t,{betId:randomUUID(),playerId:randomUUID(),game:'skyjet',proposedRisk:i===9?90000n:100000n,operationId:randomUUID()}));
   const now=Date.now(),round={id:42,start:now,flightStart:now+5000,crashAt:now+30000,end:now+33000,crash:4,mode:'normal'},player=randomUUID();
-  const placed=await tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:0,amount:20000,autoTarget:1.1},round,now));assert.equal(placed.balance,29800);
+  const placed=await tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:0,amount:20000,autoTarget:1.1},round,now));assert.equal(placed.balance,29800);assert.equal(placed.riskBudgetCents,8000);
   const reserved=await pool.query("SELECT risk FROM demo_risk_reservations WHERE player_id=$1 AND status='open'",[player]);assert.equal(BigInt(reserved.rows[0].risk),2000n);
-  const settled=await tx(t=>skySnapshot(t,player,now+7000));assert.equal(settled.bets.length,0);assert.equal(settled.balance,30020);
+  const settled=await tx(t=>skySnapshot(t,player,now+7000));assert.equal(settled.bets.length,0);assert.equal(settled.balance,30020);assert.equal(settled.riskBudgetCents,7800);
  }finally{if(pool)await pool.end();await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();fs.rmSync(dir,{recursive:true,force:true});}
 });

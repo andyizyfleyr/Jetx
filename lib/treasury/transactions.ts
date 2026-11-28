@@ -1,6 +1,6 @@
 import 'server-only';
 import type { Pool, PoolClient } from 'pg';
-import { assessRisk } from './risk';
+import { assessRisk, type RiskSnapshot } from './risk';
 
 /** Internal primitives for fictitious funds only. These are not endpoints.
  * The caller must authenticate the actor and perform the game and wallet writes
@@ -37,6 +37,17 @@ async function getReservation(tx: PoolClient, betId: string): Promise<Reservatio
   return rows[0];
 }
 
+/** Called under the treasury lock to provide the same snapshot used by reservations. */
+export async function readRiskSnapshot(tx:PoolClient, playerId:string):Promise<RiskSnapshot> {
+  const { rows: [s] } = await tx.query<{ equity: string; committed: string; player_committed: string; hourly_loss: string }>(`
+    SELECT t.equity,
+      COALESCE((SELECT sum(risk) FROM demo_risk_reservations WHERE status = 'open'), 0) AS committed,
+      COALESCE((SELECT sum(risk) FROM demo_risk_reservations WHERE status = 'open' AND player_id = $1), 0) AS player_committed,
+      COALESCE((SELECT sum(GREATEST(house_loss, 0)) FROM demo_treasury_events WHERE kind = 'settle' AND created_at > now() - interval '1 hour'), 0) AS hourly_loss
+    FROM demo_treasury t WHERE t.id = 1`, [playerId]);
+  return {equity:BigInt(s.equity),committed:BigInt(s.committed),playerCommitted:BigInt(s.player_committed),hourlyGrossLoss:BigInt(s.hourly_loss)};
+}
+
 /** Call only inside withTreasuryTransaction, BEFORE accepting a game action. */
 export async function reserveRisk(tx: PoolClient, args: { betId: string; playerId: string; game: GameName; proposedRisk: bigint; operationId: string }) {
   if (args.proposedRisk < BigInt(0)) throw new TreasuryError('INVALID_RISK');
@@ -48,17 +59,12 @@ export async function reserveRisk(tx: PoolClient, args: { betId: string; playerI
     if (e.bet_id !== args.betId || e.kind !== 'reserve' || BigInt(e.risk_after) !== args.proposedRisk) throw new TreasuryError('IDEMPOTENCY_CONFLICT');
     return { applied: false };
   }
-  const { rows: [s] } = await tx.query<{ equity: string; committed: string; player_committed: string; hourly_loss: string }>(`
-    SELECT t.equity,
-      COALESCE((SELECT sum(risk) FROM demo_risk_reservations WHERE status = 'open'), 0) AS committed,
-      COALESCE((SELECT sum(risk) FROM demo_risk_reservations WHERE status = 'open' AND player_id = $1), 0) AS player_committed,
-      COALESCE((SELECT sum(GREATEST(house_loss, 0)) FROM demo_treasury_events WHERE kind = 'settle' AND created_at > now() - interval '1 hour'), 0) AS hourly_loss
-    FROM demo_treasury t WHERE t.id = 1`, [args.playerId]);
-  const decision = assessRisk({ equity: BigInt(s.equity), committed: BigInt(s.committed), playerCommitted: BigInt(s.player_committed), hourlyGrossLoss: BigInt(s.hourly_loss) }, existing ? BigInt(existing.risk) : BigInt(0), args.proposedRisk);
+  const snapshot = await readRiskSnapshot(tx, args.playerId);
+  const decision = assessRisk(snapshot, existing ? BigInt(existing.risk) : BigInt(0), args.proposedRisk);
   if (!decision.allowed) throw new TreasuryError(`RISK_${decision.reason.toUpperCase()}`);
   await tx.query(`INSERT INTO demo_risk_reservations (bet_id, player_id, game, risk, status) VALUES ($1,$2,$3,$4,'open')
     ON CONFLICT (bet_id) DO UPDATE SET risk = EXCLUDED.risk, updated_at = now()`, [args.betId, args.playerId, args.game, args.proposedRisk.toString()]);
-  await tx.query("INSERT INTO demo_treasury_events (operation_id, bet_id, kind, risk_after, equity_after) VALUES ($1,$2,'reserve',$3,$4)", [args.operationId, args.betId, args.proposedRisk.toString(), s.equity]);
+  await tx.query("INSERT INTO demo_treasury_events (operation_id, bet_id, kind, risk_after, equity_after) VALUES ($1,$2,'reserve',$3,$4)", [args.operationId, args.betId, args.proposedRisk.toString(), snapshot.equity.toString()]);
   return { applied: true };
 }
 

@@ -48,3 +48,11 @@ export function assessRisk(snapshot: RiskSnapshot, existing: bigint, proposed: b
   }
   return { allowed: reason === 'ok', reserve, capacity, perBetLimit, playerLimit, hourlyLimit, reason };
 }
+
+/** Additional total exposure available now, before the per-bet limit. */
+export function remainingRisk(snapshot:RiskSnapshot):bigint {
+  const limits=assessRisk(snapshot,BigInt(0),BigInt(0));
+  const values=[limits.capacity-snapshot.committed,limits.playerLimit-snapshot.playerCommitted,limits.hourlyLimit-snapshot.hourlyGrossLoss-snapshot.committed];
+  const remaining=values.reduce((a,b)=>a<b?a:b);
+  return remaining>BigInt(0)?remaining:BigInt(0);
+}

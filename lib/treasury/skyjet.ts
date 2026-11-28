@@ -3,7 +3,8 @@ import { randomUUID } from 'node:crypto';
 import type { PoolClient } from 'pg';
 import type { SharedRound } from '../sharedRounds';
 import { createDemoWallet, openWager, finishWager } from './wallet';
-import { TreasuryError } from './transactions';
+import { readRiskSnapshot, TreasuryError } from './transactions';
+import { remainingRisk } from './risk';
 import { skyjetProfitLimit } from './skyjetRisk';
 
 type Bet = {bet_id:string;player_id:string;slot:number;round_id:string;flight_start:number;crash_at:number;crash:number;cap_payout:string;auto_target:number|null;stake:string;status:string};
@@ -27,8 +28,8 @@ async function settleDue(tx:PoolClient,now:number){
 async function snapshot(tx:PoolClient,playerId:string,now:number){
  const wallet=await tx.query<{balance:string}>('SELECT balance FROM demo_shared_wallets WHERE player_id=$1',[playerId]);
  const bets=(await openBets(tx,playerId)).map(b=>({slot:b.slot,amount:Number(b.stake)/100,roundId:Number(b.round_id),status:now<b.flight_start?'queued':'active',capPayout:Number(b.cap_payout)/100}));
- const equity=await tx.query<{equity:string}>('SELECT equity FROM demo_treasury WHERE id=1');
- return {balance:Number(wallet.rows[0].balance)/100,bets,maxProfit:Number(BigInt(equity.rows[0].equity)/BigInt(100))/100};
+ const risk=await readRiskSnapshot(tx,playerId);
+ return {balance:Number(wallet.rows[0].balance)/100,bets,maxProfit:Number(risk.equity/BigInt(100))/100,riskBudgetCents:Number(remainingRisk(risk))};
 }
 export async function skySnapshot(tx:PoolClient,playerId:string,now:number){await createDemoWallet(tx,playerId,'skyjet',randomUUID());await settleDue(tx,now);return snapshot(tx,playerId,now);}
 export async function skyAction(tx:PoolClient,playerId:string,actionId:string,action:Action,round:SharedRound,now:number){
