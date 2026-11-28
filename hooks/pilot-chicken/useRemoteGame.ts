@@ -9,7 +9,7 @@ const initial:State={balance:0,amount:500,difficulty:'Easy',mode:'bet',free:fals
 export function useRemoteGame(enabled:boolean){
  const [game,setGame]=useState<State>(initial);const state=useRef(game);const busy=useRef(false);
  const update=useCallback((change:(g:State)=>State)=>{state.current=change(state.current);setGame(state.current);},[]);
- const snapshot=useCallback(async()=>{const r=await fetch('/api/pilot-chicken',{cache:'no-store'});if(!r.ok)throw Error('Connexion au jeu indisponible.');const data:Remote=await r.json();update(g=>({...g,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):g.mode,ready:true,message:'',event:g.event+1}));},[update]);
+ const snapshot=useCallback(async()=>{const r=await fetch('/api/pilot-chicken',{cache:'no-store'});if(r.status===401){window.location.href=window.location.origin+'/compte';throw Error('Compte requis.');}if(!r.ok)throw Error('Connexion au jeu indisponible.');const data:Remote=await r.json();update(g=>({...g,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):g.mode,ready:true,message:'',event:g.event+1}));},[update]);
  useEffect(()=>{if(!enabled)return;let live=true;void snapshot().catch(()=>{if(live)update(g=>({...g,ready:false,message:'Connexion au jeu indisponible. Rechargez la page.'}));});return()=>{live=false;};},[enabled,snapshot,update]);
  const act=useCallback(async(kind:'start'|'next'|'cash')=>{
   if(busy.current||!state.current.ready)return;busy.current=true;update(g=>({...g,busy:true,message:''}));
@@ -17,7 +17,7 @@ export function useRemoteGame(enabled:boolean){
   try{
    // Retry the identical operation id after a transient failure, never create a second bet.
    let response:Response|undefined;for(let attempt=0;attempt<2;attempt++){try{response=await fetch('/api/pilot-chicken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});break;}catch{if(attempt)throw Error('Connexion interrompue.');}}
-   if(!response)throw Error('Connexion interrompue.');
+   if(!response)throw Error('Connexion interrompue.');if(response.status===401){window.location.href=window.location.origin+'/compte';throw Error('Compte requis.');}
    const data=await response.json();if(!response.ok){const code=String(data.error||'');throw Error(code.startsWith('RISK_')?'Limite de gain atteinte. Vous pouvez encaisser.':code==='INSUFFICIENT_BALANCE'?'Solde insuffisant.':'Action indisponible.');}
    update(v=>({...v,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):v.mode,message:'',ready:true,event:v.event+1}));
   }catch(e){try{await snapshot();}catch{update(v=>({...v,ready:false}));}update(v=>({...v,message:e instanceof Error?e.message:'Connexion interrompue.'}));}
