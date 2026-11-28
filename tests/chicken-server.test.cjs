@@ -67,3 +67,16 @@ test('chicken can cross and pay even with zero legacy house capital', async () =
     assert.equal(result.phase,'won');assert.ok(result.balance>30000);assert.equal((await db.query('SELECT equity FROM demo_treasury')).rows[0].equity,0);
   } finally {crypto.randomInt=oldRandom;await db.close();}
 });
+test('new games use Hardcore risks and Easy multipliers regardless of requested mode', async () => {
+  const db=new PGlite(),crypto=require('node:crypto'),oldRandom=crypto.randomInt;
+  try{
+    for(const m of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql','003_fictitious_chicken.sql','005_shared_wallet.sql','007_remove_house_bank.sql'])await db.exec(fs.readFileSync(path.join(root,'db/migrations',m),'utf8'));
+    const pool={connect:async()=>({query:async(q,p)=>{const r=await db.query(q,p);return {...r,rowCount:r.rows.length||r.affectedRows||0}},release(){}})},tx=fn=>withTreasuryTransaction(pool,fn),player=id(51);
+    const start={kind:'start',amount:500,difficulty:'Easy',free:false};let state=await tx(t=>chickenAction(t,player,id(52),start));
+    assert.equal(state.difficulty,'Hardcore');assert.equal(state.oddsDifficulty,'Easy');
+    crypto.randomInt=()=>999999;state=await tx(t=>chickenAction(t,player,id(53),{kind:'next'}));assert.equal(state.multiplier,1.09);assert.equal(state.step,1);
+    await tx(t=>chickenAction(t,player,id(54),{kind:'cash'}));
+    await tx(t=>chickenAction(t,player,id(55),start));crypto.randomInt=()=>200000;
+    state=await tx(t=>chickenAction(t,player,id(56),{kind:'next'}));assert.equal(state.phase,'lost');
+  }finally{crypto.randomInt=oldRandom;await db.close();}
+});
