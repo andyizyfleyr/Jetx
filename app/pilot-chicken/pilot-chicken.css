@@ -10,3 +10,10 @@
 .pc-scene-top{justify-content:flex-end}
 .pc-flight-chip{max-width:calc(100% - 20px);white-space:nowrap;gap:clamp(4px,1.5vw,8px);padding:8px clamp(6px,2vw,12px)}
 .pc-flight-chip strong,.pc-flight-chip b{font-size:clamp(10px,3vw,13px);white-space:nowrap}
+/* The Pixi canvas is visual only: allow vertical touch scrolling across it. */
+.pc-app{overflow:clip;overflow-y:visible}
+.pc-scene-host,.pc-scene-host canvas{touch-action:pan-y!important}
+@media(max-width:600px){
+  .pc-scene{height:clamp(280px,55dvh,520px);max-height:none}
+  .pc-layout{padding-bottom:max(20px,env(safe-area-inset-bottom))}
+}
