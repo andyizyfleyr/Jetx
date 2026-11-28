@@ -1,13 +1,14 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { Pool } from 'pg';
+import { ensureDemoSchema } from '@/lib/treasury/schema';
 import { withTreasuryTransaction, TreasuryError } from '@/lib/treasury/transactions';
 import { chickenAction, chickenSnapshot } from '@/lib/treasury/chicken';
 import { difficulties, type Difficulty } from '@/lib/pilot-chicken/format';
 
 const name='chicken_session';
 let pool:Pool | undefined;
-function db(){if(process.env.DEMO_CENTRAL_ENABLED !== '1' || !process.env.DATABASE_URL) throw new TreasuryError('UNAVAILABLE');return pool ??= new Pool({connectionString:process.env.DATABASE_URL,max:3,connectionTimeoutMillis:5000,idleTimeoutMillis:10000});}
+function db(){if(!process.env.DATABASE_URL) throw new TreasuryError('UNAVAILABLE');return pool ??= new Pool({connectionString:process.env.DATABASE_URL,max:3,connectionTimeoutMillis:5000,idleTimeoutMillis:10000});}
 const hash=(token:string)=>createHash('sha256').update(token).digest('hex');
 function validOrigin(request:NextRequest){try{const source=request.headers.get('origin')||request.headers.get('referer')||'';return new URL(source).host===(request.headers.get('x-forwarded-host')||request.headers.get('host'));}catch{return false;}}
 function fail(e:unknown){if(e instanceof TreasuryError && /^(RISK_|INVALID_|NO_ACTIVE|GAME_IN|FREE_USED|INSUFFICIENT)/.test(e.code)) return NextResponse.json({error:e.code},{status:409});console.error('Pilot Chicken server unavailable', e instanceof Error ? e.message : 'unknown');return NextResponse.json({error:'UNAVAILABLE'},{status:503});}
@@ -15,7 +16,7 @@ export async function GET(request:NextRequest){
  try{
   const incoming=request.cookies.get(name)?.value;
   const token=incoming&&/^[a-f0-9]{64}$/.test(incoming)?incoming:randomBytes(32).toString('hex');
-  const result=await withTreasuryTransaction(db(),async tx=>{
+  const database=db();await ensureDemoSchema(database);const result=await withTreasuryTransaction(database,async tx=>{
    const h=hash(token); const rows=await tx.query<{player_id:string}>('SELECT player_id FROM demo_sessions WHERE token_hash=$1',[h]);
    let player=rows.rows[0]?.player_id;
    if(!player){player=randomUUID();await tx.query('INSERT INTO demo_sessions(token_hash,player_id) VALUES($1,$2)',[h,player]);}
@@ -34,7 +35,7 @@ export async function POST(request:NextRequest){
   let action:{kind:'start';amount:number;difficulty:Difficulty;free:boolean}|{kind:'next'|'cash'};
   if(body.kind==='start'&&Number.isSafeInteger(body.amount)&&difficulties.includes(body.difficulty)&&typeof body.free==='boolean') action={kind:'start',amount:body.amount,difficulty:body.difficulty,free:body.free};
   else if(body.kind==='next'||body.kind==='cash')action={kind:body.kind};else throw new TreasuryError('INVALID_ACTION');
-  const result=await withTreasuryTransaction(db(),async tx=>{const {rows}=await tx.query<{player_id:string}>('SELECT player_id FROM demo_sessions WHERE token_hash=$1',[hash(token)]);if(!rows[0])throw new TreasuryError('INVALID_SESSION');return chickenAction(tx,rows[0].player_id,id,action);});
+  const database=db();await ensureDemoSchema(database);const result=await withTreasuryTransaction(database,async tx=>{const {rows}=await tx.query<{player_id:string}>('SELECT player_id FROM demo_sessions WHERE token_hash=$1',[hash(token)]);if(!rows[0])throw new TreasuryError('INVALID_SESSION');return chickenAction(tx,rows[0].player_id,id,action);});
   return NextResponse.json(result,{headers:{'Cache-Control':'no-store'}});
  }catch(e){return fail(e);}
 }
