@@ -5,12 +5,12 @@ import { multiplierAt, riskAt, difficulties, type Difficulty } from '../pilot-ch
 import { createDemoWallet, openWager, finishWager } from './wallet';
 import { TreasuryError } from './transactions';
 
-type State = { phase:'idle'|'playing'|'won'|'lost'; step:number; stake:number; multiplier:number; difficulty:Difficulty; free:boolean; freeAvailable:boolean; betId:string|null; history: {id:string; multiplier:number; bet:number; payout:number; won:boolean; free:boolean}[] };
-type Action = {kind:'start'; amount:number; difficulty:Difficulty; free:boolean} | {kind:'next'|'cash'};
-const initial: State = {phase:'idle',step:0,stake:0,multiplier:1,difficulty:'Easy',free:false,freeAvailable:true,betId:null,history:[]};
+type State = { phase:'idle'|'playing'|'won'|'lost'; step:number; stake:number; multiplier:number; difficulty:Difficulty; oddsDifficulty?:Difficulty; free:boolean; freeAvailable:boolean; betId:string|null; history: {id:string; multiplier:number; bet:number; payout:number; won:boolean; free:boolean}[] };
+type Action = {kind:'start'; amount:number; difficulty:Difficulty; oddsDifficulty?:Difficulty; free:boolean} | {kind:'next'|'cash'};
+const initial: State = {phase:'idle',step:0,stake:0,multiplier:1,difficulty:'Hardcore',oddsDifficulty:'Easy',free:false,freeAvailable:true,betId:null,history:[]};
 async function read(tx:PoolClient,playerId:string) {
  const {rows} = await tx.query<{state:State}>('SELECT state FROM demo_chicken_state WHERE player_id=$1 FOR UPDATE',[playerId]);
- return rows[0]?.state ?? initial;
+ return rows[0]?.state ? {...initial,...rows[0].state,oddsDifficulty:rows[0].state.oddsDifficulty ?? (rows[0].state.phase==='playing'?rows[0].state.difficulty:'Easy')} : initial;
 }
 async function view(tx:PoolClient,playerId:string,state:State){const {rows}=await tx.query<{balance:string}>('SELECT balance FROM demo_shared_wallets WHERE player_id=$1',[playerId]);return {...state,balance:Number(rows[0].balance)/100};}
 export async function chickenSnapshot(tx:PoolClient,playerId:string){await createDemoWallet(tx,playerId,'pilot-chicken',randomUUID()); return view(tx,playerId,await read(tx,playerId));}
@@ -24,12 +24,12 @@ export async function chickenAction(tx:PoolClient,playerId:string,actionId:strin
   if(action.free&&!state.freeAvailable) throw new TreasuryError('FREE_USED');
   const stake=action.free?500:action.amount,betId=randomUUID(),funded=action.free?BigInt(0):BigInt(stake*100);
   await openWager(tx,{playerId,game:'pilot-chicken',betId,operationId:actionId,stake:BigInt(stake*100),fundedStake:funded});
-  state={...state,phase:'playing',step:0,stake,multiplier:1,difficulty:action.difficulty,free:action.free,freeAvailable:action.free?false:state.freeAvailable,betId};
+  state={...state,phase:'playing',step:0,stake,multiplier:1,difficulty:'Hardcore',oddsDifficulty:'Easy',free:action.free,freeAvailable:action.free?false:state.freeAvailable,betId};
  } else {
   if(state.phase!=='playing'||!state.betId)throw new TreasuryError('NO_ACTIVE_GAME');
   const payoutAt=(m:number)=>Math.floor(state.stake*m)*100;
   if(action.kind==='next'){
-   const step=state.step+1,multiplier=multiplierAt(step,state.difficulty),payout=payoutAt(multiplier);
+   const step=state.step+1,multiplier=multiplierAt(step,state.oddsDifficulty??state.difficulty),payout=payoutAt(multiplier);
    if(randomInt(1000000)<Math.round(riskAt(step,state.difficulty)*1000000)){
     await finishWager(tx,{playerId,betId:state.betId,operationId:randomUUID(),payout:BigInt(0)});
     const history=[{id:state.betId,multiplier:state.multiplier,bet:state.stake,payout:0,won:false,free:state.free},...state.history].slice(0,20);
