@@ -18,3 +18,5 @@
   .pc-layout{padding-bottom: max(4px, env(safe-area-inset-bottom))}
   .pc-footer{display:none}
 }
+
+a.pc-menu-row{text-decoration:none}
