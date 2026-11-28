@@ -3,9 +3,9 @@ import { useGame, type Bet } from '@/store/game';
 export const centralSkyEnabled=true;
 let busy=false, epoch=0;
 type ServerBet={slot:number;amount:number;roundId:number;status:'active'|'queued';capPayout:number};
-export function applySkySnapshot(data:{balance:number;maxProfit:number;bets:ServerBet[]}) {
- if(!Number.isFinite(data.balance)||!Number.isFinite(data.maxProfit)||!Array.isArray(data.bets))throw Error('Réponse invalide');
- useGame.setState(s=>({balance:data.balance,maxProfit:data.maxProfit,bets:s.bets.map((old,i)=>{const b=data.bets.find(x=>x.slot===i);return b?{...old,amount:b.amount,lastAmount:b.amount,roundId:b.roundId,status:b.status,capPayout:b.capPayout}:({...old,status:'empty',roundId:undefined,capPayout:undefined} as Bet);})}));
+export function applySkySnapshot(data:{balance:number;maxProfit:number;riskBudgetCents:number;bets:ServerBet[]}) {
+ if(!Number.isFinite(data.balance)||!Number.isFinite(data.maxProfit)||!Number.isSafeInteger(data.riskBudgetCents)||data.riskBudgetCents<0||!Array.isArray(data.bets))throw Error('Réponse invalide');
+ useGame.setState(s=>({balance:data.balance,maxProfit:data.maxProfit,riskBudgetCents:data.riskBudgetCents,bets:s.bets.map((old,i)=>{const b=data.bets.find(x=>x.slot===i);return b?{...old,amount:b.amount,lastAmount:b.amount,roundId:b.roundId,status:b.status,capPayout:b.capPayout}:({...old,status:'empty',roundId:undefined,capPayout:undefined} as Bet);})}));
 }
 export async function refreshSky(force=false){const current=epoch;const response=await fetch('/api/skyjet',{cache:'no-store'});if(response.status===401){window.location.href=window.location.origin+'/compte';throw Error('Compte requis');}if(!response.ok)throw Error('Service indisponible');const data=await response.json();if((!busy||force)&&current===epoch)applySkySnapshot(data);}
 export async function skyCommand(kind:'place'|'cancel'|'cash',slot:number,amount?:number){
