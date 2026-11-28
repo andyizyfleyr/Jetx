@@ -3,9 +3,10 @@ import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useGame } from '@/store/game';
 import BetCard from './BetCard';
+import { centralSkyEnabled } from '@/lib/centralSky';
 
 export default function BetPanel({ amounts, setAmounts }: { amounts: string[]; setAmounts: React.Dispatch<React.SetStateAction<string[]>> }) {
-  const { bets, autoCash, autoTarget, autoPlay, set, notify } = useGame();
+  const { bets, autoCash, autoTarget, autoPlay, maxProfit, set, notify } = useGame();
   const [draft, setDraft] = useState(() => String(autoTarget));
   const [editing, setEditing] = useState(false);
   const applyTarget = () => {
@@ -22,9 +23,10 @@ export default function BetPanel({ amounts, setAmounts }: { amounts: string[]; s
   return <div className="bet-panel">
     <div className="panel-controls">
       <div className="auto-control"><button className={`switch ${autoCash ? 'on' : ''}`} role="switch" aria-checked={autoCash} aria-label="Encaissement automatique" onClick={() => { setDraft(String(autoTarget)); set({ autoCash: !autoCash }); }}><span /></button><span>Encaissement auto</span></div>
-      <button className={`auto-play ${autoPlay ? 'selected' : ''}`} onClick={() => set({ autoPlay: !autoPlay })} aria-pressed={autoPlay}>Jeu auto <RefreshCw size={18} /></button>
+      <button className={`auto-play ${autoPlay ? 'selected' : ''}`} disabled={centralSkyEnabled} title={centralSkyEnabled?'Indisponible pendant la migration serveur':undefined} onClick={() => set({ autoPlay: !autoPlay })} aria-pressed={autoPlay}>Jeu auto <RefreshCw size={18} /></button>
     </div>
     {autoCash && <div className="auto-target-row"><div className="target-description"><span>Encaisser automatiquement à</span>{editing && <small>Cible active : {autoTarget.toFixed(2)}x jusqu’à validation</small>}</div><label className="target"><input aria-label="Multiplicateur cible, minimum 1,01" type="text" inputMode="decimal" autoComplete="off" value={draft} onFocus={e => { setEditing(true); e.currentTarget.select(); }} onChange={e => { if (/^\d*(?:[.,]\d*)?$/.test(e.target.value)) setDraft(e.target.value); }} onBlur={applyTarget} onKeyDown={e => { if (e.key === 'Enter') e.currentTarget.blur(); }} />x</label></div>}
+    {centralSkyEnabled && <div style={{fontSize:11,color:"#a5a7b1",paddingBottom:6}}>Gain net maximum par mise : {maxProfit.toLocaleString("fr-FR")} ₣ · encaissement automatique au plafond</div>}
     <div className="bet-grid">{bets.map((b, i) => <BetCard key={i} bet={b} index={i} amount={amounts[i]} setAmount={value => setAmounts(previous => previous.map((amount, j) => i === j ? value : amount))} />)}</div>
   </div>;
 }

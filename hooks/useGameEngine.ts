@@ -1,12 +1,11 @@
 'use client';
 import { useEffect } from 'react';
-import { useGame, makePlayers, type Bet, type Phase } from '@/store/game';
+import { useGame, makePlayers, type Phase } from '@/store/game';
 import { playSound, setAudioEnabled, stopEngine, unlockAudio, updateEngine } from '@/lib/audio';
 import type { SharedRound } from '@/lib/sharedRounds';
-import { isValidBetAmount } from '@/lib/betLimits';
+import { refreshSky } from '@/lib/centralSky';
 
 const MAX_CLOCK_AGE = 20000;
-const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 /** Interpolate against server UTC, never against the player's wall clock. */
 export function useGameEngine() {
@@ -15,7 +14,7 @@ export function useGameEngine() {
     let rounds: SharedRound[] = [];
     let snapshotRoundId: number | undefined;
     let refresh: () => Promise<void> = async () => {};
-    let historyKey = -Infinity, lastTick = -1;
+    let historyKey = -Infinity, lastTick=-1, serverReady = false;
     const controller = new AbortController();
 
     const syncNow = (): boolean => {
@@ -36,63 +35,20 @@ export function useGameEngine() {
       }
       const phase: Phase = now < round.flightStart ? 'WAITING' : now < round.crashAt ? 'FLYING' : 'CRASHED';
       const multiplier = phase === 'WAITING' ? 1 : phase === 'FLYING' ? Math.exp(.00006 * (now - round.flightStart)) : round.crash;
-      const firstSync = s.roundId < 0;
-      let balance = s.balance, lostCount = 0, lostTotal = 0, autoCount = 0, autoGain = 0, refunded = 0;
-      let bets: Bet[] = s.bets.map(b => {
-        if (b.status === 'empty' || b.roundId === undefined) return b;
-        const target = rounds.find(r => r.id === b.roundId);
-        if (!target) {
-          // Do not invent a result when reconnection skips beyond the returned history.
-          if (b.roundId < round.id) { balance += b.amount; refunded += b.amount; return { ...b, status: 'empty', roundId: undefined }; }
-          return b;
-        }
-        if (now < target.flightStart) return b.status === 'queued' ? b : { ...b, status: 'queued' };
-        const autoTime = target.flightStart + Math.log(Math.max(1.01, s.autoTarget)) / .00006;
-        if (s.autoCash && autoTime < target.crashAt && now >= autoTime) {
-          const gain = Math.floor(b.amount * s.autoTarget * 100) / 100;
-          balance += gain; autoGain += gain; autoCount++;
-          return { ...b, status: 'empty', roundId: undefined, result: { type: 'won', amount: gain, roundId: target.id } };
-        }
-        if (now >= target.crashAt) { lostCount++; lostTotal += b.amount; return { ...b, status: 'empty', roundId: undefined, result: { type: 'lost', amount: b.amount, roundId: target.id } }; }
-        return b.status === 'active' ? b : { ...b, status: 'active' };
-      });
-      let replayed = 0, skipped = 0, invalidAuto = 0;
-      // Replaying is local and only happens when the client observes the waiting phase.
-      if (!firstSync && round.id !== s.roundId && phase === 'WAITING' && s.autoPlay) {
-        bets = bets.map(b => {
-          if (b.status !== 'empty' || b.lastAmount <= 0) return b;
-          if (!isValidBetAmount(b.lastAmount)) { invalidAuto++; return b; }
-          if (b.lastAmount > balance) { skipped++; return b; }
-          balance -= b.lastAmount; replayed++;
-          return { ...b, amount: b.lastAmount, status: 'queued', roundId: round.id, result: undefined };
-        });
+      {
+        const roundChanged=s.roundId!==round.id;
+        const latestCrash=rounds.filter(r=>r.crashAt<=now).at(-1);
+        const history=rounds.filter(r=>r.crashAt<=now).slice(-20).reverse().map(r=>({value:r.crash,time:new Date(r.crashAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}));
+        let players=roundChanged?makePlayers():s.players;
+        if(phase==='FLYING')players=players.map(p=>!p.cashed&&multiplier>=p.target?{...p,cashed:true}:p);
+        s.set({syncReady:serverReady,roundId:round.id,phase,multiplier,countdown:phase==='WAITING'?Math.max(0,Math.ceil((round.flightStart-now)/1000)):0,history,players, ...(roundChanged?{online:2050+Math.floor(Math.random()*110)}:{})});
+        if(latestCrash?.id!==historyKey)historyKey=latestCrash?.id??-Infinity;
+        if(s.roundId>=0 && (s.phase!==phase || roundChanged) && phase==='CRASHED')playSound('crash',s.sound);
+        if(phase==='WAITING'){const tick=Math.ceil((round.flightStart-now)/1000);if(tick!==lastTick&&tick>0){lastTick=tick;playSound('tick',s.sound);}}else lastTick=-1;
+        updateEngine(s.sound&&phase==='FLYING'&&document.visibilityState==='visible',multiplier);
+        return serverReady;
       }
-      balance = Math.round(balance * 100) / 100;
-      const roundChanged = firstSync || round.id !== s.roundId;
-      const phaseChanged = phase !== s.phase || roundChanged;
-      const latestCrash = rounds.filter(r => r.crashAt <= now).at(-1);
-      const historyChanged = latestCrash?.id !== historyKey;
-      if (historyChanged) historyKey = latestCrash?.id ?? -Infinity;
-      const history = historyChanged ? rounds.filter(r => r.crashAt <= now).slice(-20).reverse().map(r => ({ value: r.crash, time: new Date(r.crashAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) })) : s.history;
-      let players = roundChanged ? makePlayers() : s.players;
-      if (phase === 'FLYING') players = players.map(p => !p.cashed && multiplier >= p.target ? { ...p, cashed: true } : p);
-      s.set({ syncReady: true, roundId: round.id, phase, multiplier, countdown: phase === 'WAITING' ? Math.max(0, Math.ceil((round.flightStart - now) / 1000)) : 0,
-        bets, balance, history, players, ...(roundChanged ? { online: 2050 + Math.floor(Math.random() * 110) } : {}) });
-      const notes: string[] = [];
-      if (autoCount) { notes.push(`Encaissement auto : ${money(autoGain)} ₣ à ${s.autoTarget.toFixed(2)}x.`); playSound('cash', s.sound); }
-      if (lostCount) notes.push(`${lostCount > 1 ? 'Mises perdues' : 'Mise perdue'} : ${money(lostTotal)} ₣.`);
-      if (refunded) notes.push(`Mises remboursées après déconnexion : ${money(refunded)} ₣.`);
-      if (replayed) notes.push('Jeu auto : mises replacées.');
-      if (skipped) notes.push('Solde insuffisant pour certaines mises.');
-      if (invalidAuto) notes.push('Jeu auto : mise comprise entre 200 ₣ et 10 000 ₣ requise.');
-      if (notes.length) s.notify(notes.join(' '), lostCount || skipped || invalidAuto ? 'error' : 'success');
-      if (!firstSync && phaseChanged && phase === 'CRASHED') playSound('crash', s.sound);
-      if (phase === 'WAITING') {
-        const tick = Math.ceil((round.flightStart - now) / 1000);
-        if (tick !== lastTick && tick > 0) { lastTick = tick; playSound('tick', s.sound); }
-      } else lastTick = -1;
-      updateEngine(s.sound && phase === 'FLYING' && document.visibilityState === 'visible', multiplier);
-      return true;
+
     };
     useGame.setState({ syncReady: false, syncNow });
     refresh = async () => {
@@ -100,6 +56,7 @@ export function useGameEngine() {
       inflight = true;
       const before = performance.now();
       try {
+        try{await refreshSky();serverReady=true;}catch{serverReady=false;useGame.setState({syncReady:false});}
         const response = await fetch('/api/round', { cache: 'no-store', signal: controller.signal });
         if (!response.ok) throw new Error('Clock request failed');
         const data: { serverTime: number; rounds: SharedRound[] } = await response.json();

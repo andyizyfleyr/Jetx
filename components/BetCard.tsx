@@ -3,21 +3,20 @@ import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame, type Bet } from '@/store/game';
-import { playSound } from '@/lib/audio';
+import { skyCommand } from '@/lib/centralSky';
 import { MIN_BET, MAX_BET, QUICK_BETS, isValidBetAmount } from '@/lib/betLimits';
 const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; index: number; amount: string; setAmount: (value: string) => void }) {
   const [error, setError] = useState('');
-  const { multiplier, place, cancel, cash, sound, balance, phase, notify, invalidBets, set, syncReady } = useGame();
+  const { multiplier, balance, phase, invalidBets, set, syncReady } = useGame();
   const invalid = invalidBets.includes(index);
   const update = (value: string) => { setAmount(value); setError(''); if (invalid) set({ invalidBets: useGame.getState().invalidBets.filter(i => i !== index) }); };
   const submit = () => {
     const value = Number(amount.replace(',', '.'));
     if (!isValidBetAmount(value)) { setError('Mise : 200 à 10 000 ₣'); return; }
     if (value > balance) { setError('Solde insuffisant'); return; }
-    place(index, value); setError('');
-    if (useGame.getState().bets[index].status === 'queued') notify(`Mise de ${money(useGame.getState().bets[index].amount)} ₣ placée ${useGame.getState().phase === 'WAITING' ? 'pour cette manche' : 'pour la prochaine manche'}.`);
+    void skyCommand('place',index,value); setError('');
   };
   return <motion.div initial={false} animate={{ opacity: 1 }} className={`bet-card ${bet.status} ${invalid && bet.status === 'empty' ? 'invalid-bet' : ''}`}>
     {bet.status === 'empty' ? <>
@@ -32,8 +31,8 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
       <button className="bet-button bet-green" disabled={!syncReady} onClick={submit}>Miser</button>
     </> : <>
       <div className="bet-caption">{bet.status === 'active' ? 'Vous gagnez' : phase === 'WAITING' ? 'Mise placée · cette manche' : 'En attente de la prochaine manche'}</div>
-      <div className="bet-value">{money(bet.status === 'active' ? Math.floor(bet.amount * multiplier * 100) / 100 : bet.amount)} ₣</div>
-      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady} onClick={() => { if (bet.status === 'active') { const gain = cash(index); if (gain) { playSound('cash', sound); notify(`Mise encaissée : ${money(gain)} ₣ à ${useGame.getState().multiplier.toFixed(2)}x.`, 'success'); } } else { if (cancel(index)) notify(`Mise annulée : ${money(bet.amount)} ₣ remboursés.`, 'success'); } }}>{bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
+      <div className="bet-value">{money(bet.status === 'active' ? Math.min(bet.capPayout ?? Infinity, Math.floor(bet.amount * multiplier * 100) / 100) : bet.amount)} ₣</div>
+      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady} onClick={() => { void skyCommand(bet.status==='active'?'cash':'cancel',index); }}>{bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
     </>}
   </motion.div>;
 }
