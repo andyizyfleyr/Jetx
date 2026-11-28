@@ -18,7 +18,7 @@ export function useRemoteGame(enabled:boolean){
    // Retry the identical operation id after a transient failure, never create a second bet.
    let response:Response|undefined;for(let attempt=0;attempt<2;attempt++){try{response=await fetch('/api/pilot-chicken',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});break;}catch{if(attempt)throw Error('Connexion interrompue.');}}
    if(!response)throw Error('Connexion interrompue.');if(response.status===401){window.location.href=window.location.origin+'/compte';throw Error('Compte requis.');}
-   const data=await response.json();if(!response.ok){const code=String(data.error||'');throw Error(code.startsWith('RISK_')?'Limite de gain atteinte. Vous pouvez encaisser.':code==='INSUFFICIENT_BALANCE'?'Solde insuffisant.':'Action indisponible.');}
+   const data=await response.json();if(!response.ok){const code=String(data.error||'');throw Error(code==='INSUFFICIENT_BALANCE'?'Solde insuffisant.':'Action indisponible.');}
    update(v=>({...v,...data,mode:data.phase==='playing'?(data.free?'free':'bet'):v.mode,message:'',ready:true,event:v.event+1}));
   }catch(e){try{await snapshot();}catch{update(v=>({...v,ready:false}));}update(v=>({...v,message:e instanceof Error?e.message:'Connexion interrompue.'}));}
   finally{busy.current=false;update(v=>({...v,busy:false}));}

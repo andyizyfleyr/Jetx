@@ -6,20 +6,17 @@ import { motion } from 'motion/react';
 import { useGame, type Bet } from '@/store/game';
 import { skyCommand } from '@/lib/centralSky';
 import { displayBetStatus } from '@/lib/skyjetBetDisplay';
-import { canCoverBets } from '@/lib/skyjetAvailability';
 import { MIN_BET, MAX_BET, QUICK_BETS, isValidBetAmount } from '@/lib/betLimits';
 const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; index: number; amount: string; setAmount: (value: string) => void }) {
   const [error, setError] = useState('');
-  const {multiplier,balance,phase,invalidBets,set,syncReady,actionPending,pendingSlots,roundId,riskBudgetCents,maxProfit,autoCash,autoTarget,usedRoundId,usedSlots}=useGame(useShallow(s=>({multiplier:s.multiplier,balance:s.balance,phase:s.phase,invalidBets:s.invalidBets,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending,pendingSlots:s.pendingSlots,roundId:s.roundId,riskBudgetCents:s.riskBudgetCents,maxProfit:s.maxProfit,autoCash:s.autoCash,autoTarget:s.autoTarget,usedRoundId:s.usedRoundId,usedSlots:s.usedSlots})));
+  const {multiplier,balance,phase,invalidBets,set,syncReady,actionPending,pendingSlots,roundId,usedRoundId,usedSlots}=useGame(useShallow(s=>({multiplier:s.multiplier,balance:s.balance,phase:s.phase,invalidBets:s.invalidBets,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending,pendingSlots:s.pendingSlots,roundId:s.roundId,usedRoundId:s.usedRoundId,usedSlots:s.usedSlots})));
   const status=displayBetStatus(bet,phase,roundId);
   const thisPending=actionPending && pendingSlots.includes(index);
   const invalid = invalidBets.includes(index);
   const value=Number(amount.replace(',', '.'));
-  const covered=canCoverBets([value],balance,riskBudgetCents,maxProfit,autoCash,autoTarget);
   const alreadyPlayed=phase==='FLYING' && usedRoundId===roundId && usedSlots.includes(index);
-  const riskBlocked=isValidBetAmount(value)&&value<=balance&&!covered;
 
   const update = (value: string) => { setAmount(value); setError(''); if (invalid) set({ invalidBets: useGame.getState().invalidBets.filter(i => i !== index) }); };
   const submit = () => {
@@ -37,7 +34,7 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
         <button aria-label={`Augmenter la mise ${index + 1}`} onClick={() => update(String(Math.min(MAX_BET, Math.max(MIN_BET, (Number(amount.replace(',', '.')) || MIN_BET) + 100))))}><Plus size={16} /></button>
       </div>
       <div className="quick-bets">{QUICK_BETS.map(n => <button key={n} className={value === n ? 'chosen' : ''} onClick={() => update(String(n))}>{n.toLocaleString('fr-FR')} ₣</button>)}</div>
-      {(error || alreadyPlayed || (syncReady && isValidBetAmount(value) && value>balance) || (riskBlocked && syncReady)) && <div className="card-error" role="status">{error || (alreadyPlayed?'Cette case a déjà misé sur le tour en cours.':value>balance?'Solde insuffisant.':autoCash?'Capacité insuffisante : réduisez la mise ou la cible auto.':'Capacité insuffisante : activez une cible auto ou attendez.')}</div>}
+      {(error || alreadyPlayed || (syncReady && isValidBetAmount(value) && value>balance)) && <div className="card-error" role="status">{error || (alreadyPlayed?'Cette case a déjà misé sur le tour en cours.':'Solde insuffisant.')}</div>}
       <button className="bet-button bet-green" disabled={!syncReady || actionPending || alreadyPlayed} onClick={submit}>{thisPending?'Patientez…':phase!=='WAITING'?'Miser · prochain tour':'Miser'}</button>
     </> : <>
       <div className="bet-caption">{status === 'active' ? 'Vous gagnez' : status === 'queued' ? (bet.roundId!==undefined && bet.roundId>roundId ? 'Mise placée · prochain tour' : 'Mise placée · cette manche') : 'Règlement en cours'}</div>
