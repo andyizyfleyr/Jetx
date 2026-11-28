@@ -4,6 +4,7 @@ import type { PoolClient } from 'pg';
 import type { SharedRound } from '../sharedRounds';
 import { createDemoWallet, openWager, finishWager } from './wallet';
 import { TreasuryError } from './transactions';
+import { skyjetProfitLimit } from './skyjetRisk';
 
 type Bet = {bet_id:string;player_id:string;slot:number;round_id:string;flight_start:number;crash_at:number;crash:number;cap_payout:string;auto_target:number|null;stake:string;status:string};
 type Action = {kind:'place';slot:number;amount:number;autoTarget:number|null} | {kind:'cancel'|'cash';slot:number};
@@ -43,7 +44,7 @@ export async function skyAction(tx:PoolClient,playerId:string,actionId:string,ac
   const equity=(await tx.query<{equity:string}>('SELECT equity FROM demo_treasury WHERE id=1')).rows[0];
   // Reserve the maximum net payout up front. Automatic cashout at the cap is
   // necessary because the crash multiplier grows independently of the client.
-  const profitCap=BigInt(equity.equity)/BigInt(100), stake=BigInt(action.amount),betId=randomUUID();
+  const stake=BigInt(action.amount), profitCap=skyjetProfitLimit(stake,BigInt(equity.equity)/BigInt(100),action.autoTarget),betId=randomUUID();
   if(profitCap<=BigInt(0))throw new TreasuryError('RISK_CAPACITY');
   await openWager(tx,{playerId,game:'skyjet',betId,operationId:actionId,stake,fundedStake:stake,risk:profitCap});
   await tx.query("INSERT INTO demo_skyjet_bets(bet_id,player_id,slot,round_id,flight_start,crash_at,crash,cap_payout,auto_target,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'open')",[betId,playerId,action.slot,round.id,round.flightStart,round.crashAt,round.crash,(stake+profitCap).toString(),action.autoTarget]);
