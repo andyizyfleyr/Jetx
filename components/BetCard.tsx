@@ -5,12 +5,15 @@ import { Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame, type Bet } from '@/store/game';
 import { skyCommand } from '@/lib/centralSky';
+import { displayBetStatus } from '@/lib/skyjetBetDisplay';
 import { MIN_BET, MAX_BET, QUICK_BETS, isValidBetAmount } from '@/lib/betLimits';
 const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; index: number; amount: string; setAmount: (value: string) => void }) {
   const [error, setError] = useState('');
-  const {multiplier,balance,phase,invalidBets,set,syncReady,actionPending}=useGame(useShallow(s=>({multiplier:s.multiplier,balance:s.balance,phase:s.phase,invalidBets:s.invalidBets,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending})));
+  const {multiplier,balance,phase,invalidBets,set,syncReady,actionPending,pendingSlots,roundId}=useGame(useShallow(s=>({multiplier:s.multiplier,balance:s.balance,phase:s.phase,invalidBets:s.invalidBets,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending,pendingSlots:s.pendingSlots,roundId:s.roundId})));
+  const status=displayBetStatus(bet,phase,roundId);
+  const thisPending=actionPending && pendingSlots.includes(index);
   const invalid = invalidBets.includes(index);
   const update = (value: string) => { setAmount(value); setError(''); if (invalid) set({ invalidBets: useGame.getState().invalidBets.filter(i => i !== index) }); };
   const submit = () => {
@@ -19,8 +22,8 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
     if (value > balance) { setError('Solde insuffisant'); return; }
     void skyCommand('place',index,value); setError('');
   };
-  return <motion.div initial={false} animate={{ opacity: 1 }} className={`bet-card ${bet.status} ${invalid && bet.status === 'empty' ? 'invalid-bet' : ''}`}>
-    {bet.status === 'empty' ? <>
+  return <motion.div initial={false} animate={{ opacity: 1 }} className={`bet-card ${bet.status} ${invalid && status === 'empty' ? 'invalid-bet' : ''}`}>
+    {status === 'empty' ? <>
       <span className="sr-only" aria-live="polite">{bet.result ? (bet.result.type === 'won' ? `Gain encaissé : ${money(bet.result.amount)} ₣` : 'Mise perdue') : ''}</span>
       <div className="amount-control">
         <button aria-label={`Diminuer la mise ${index + 1}`} onClick={() => update(String(Math.min(MAX_BET, Math.max(MIN_BET, (Number(amount.replace(',', '.')) || MIN_BET) - 100))))}><Minus size={16} /></button>
@@ -29,11 +32,11 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
       </div>
       <div className="quick-bets">{QUICK_BETS.map(n => <button key={n} className={Number(amount.replace(',', '.')) === n ? 'chosen' : ''} onClick={() => update(String(n))}>{n.toLocaleString('fr-FR')} ₣</button>)}</div>
       {error && <div className="card-error" role="status">{error}</div>}
-      <button className="bet-button bet-green" disabled={!syncReady || actionPending} onClick={submit}>{actionPending?'Patientez…':'Miser'}</button>
+      <button className="bet-button bet-green" disabled={!syncReady || actionPending || phase!=='WAITING'} onClick={submit}>{thisPending?'Patientez…':phase!=='WAITING'?'Mises fermées':'Miser'}</button>
     </> : <>
-      <div className="bet-caption">{bet.status === 'active' ? 'Vous gagnez' : phase === 'WAITING' ? 'Mise placée · cette manche' : 'En attente de la prochaine manche'}</div>
-      <div className="bet-value">{money(bet.status === 'active' ? Math.min(bet.capPayout ?? Infinity, Math.floor(bet.amount * multiplier * 100) / 100) : bet.amount)} ₣</div>
-      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady || actionPending} onClick={() => { void skyCommand(bet.status==='active'?'cash':'cancel',index); }}>{actionPending ? 'Patientez…' : bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
+      <div className="bet-caption">{status === 'active' ? 'Vous gagnez' : status === 'queued' ? 'Mise placée · cette manche' : 'Règlement en cours'}</div>
+      <div className="bet-value">{money(status === 'active' ? Math.min(bet.capPayout ?? Infinity, Math.floor(bet.amount * multiplier * 100) / 100) : bet.amount)} ₣</div>
+      <button className={`bet-button ${status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady || actionPending || status==='settling'} onClick={() => { void skyCommand(status==='active'?'cash':'cancel',index); }}>{thisPending ? 'Patientez…' : status === 'settling' ? 'Règlement…' : status === 'active' ? 'Encaisser' : 'Annuler'}</button>
     </>}
   </motion.div>;
 }
