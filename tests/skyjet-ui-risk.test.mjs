@@ -17,3 +17,11 @@ test('auto cashout reserves only its worst-case profit, bounded by house cap',()
  assert.equal(skyjetProfitLimit(20000n,100000n,20),100000n);
  assert.ok(skyjetProfitLimit(99999n,100000n,1.33)>=BigInt(Math.floor(99999*1.33)-99999));
 });
+
+test('future bets stay cancellable during flight and after crash',()=>{
+ const next={status:'queued',roundId:8};
+ assert.equal(displayBetStatus(next,'FLYING',7),'queued');
+ assert.equal(displayBetStatus(next,'CRASHED',7),'queued');
+ assert.equal(displayBetStatus(next,'WAITING',8),'queued');
+ assert.equal(displayBetStatus(next,'FLYING',8),'active');
+});

@@ -54,6 +54,24 @@ export async function readSchedule() {
     return { serverTime, rounds, controlsAvailable: true, scheduled: events.filter(e => current && e.effectiveId > current.id).at(-1) ?? null };
   });
 }
+
+/** Read the schedule while holding the same lock as mode changes. Call inside a transaction. */
+export async function readScheduleLocked(client: PoolClient) {
+  await client.query('SELECT pg_advisory_xact_lock($1)', [194851277]);
+  const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode; crash_override: number | null }>('SELECT effective_id, start_ms, mode, crash_override FROM skyjet_mode_events ORDER BY effective_id');
+  const events = rows.rows.map(row => ({ effectiveId:Number(row.effective_id), start:Number(row.start_ms), mode:row.mode, crashOverride:row.crash_override == null ? null : Number(row.crash_override) }));
+  const now=Date.now();
+  return { now, rounds:getSharedSchedule(now, events) };
+}
+// Do not reschedule any round that already has accepted wagers. This is read
+// under the schedule lock also held by SkyJet while accepting new wagers.
+async function lastCommittedRound(client: PoolClient): Promise<number> {
+  const exists = await client.query<{name:string|null}>("SELECT to_regclass('demo_skyjet_bets')::text AS name");
+  if (!exists.rows[0].name) return -Infinity;
+  const result = await client.query<{id:string|null}>("SELECT max(round_id) AS id FROM demo_skyjet_bets WHERE status='open'");
+  return result.rows[0].id === null ? -Infinity : Number(result.rows[0].id);
+}
+
 export async function changeMode(mode: GameMode) {
   return withSchedule(async (client, events, now) => {
     const rounds = getSharedSchedule(now, events);
@@ -61,7 +79,8 @@ export async function changeMode(mode: GameMode) {
     if (!current) throw new Error('NO_CURRENT_ROUND');
     // Keep a short publication window for clients to fetch the new schedule.
     // Very short current rounds may make the change take effect one round later.
-    const target = rounds.find(r => r.id > current.id && r.start >= now + 8000);
+    const committed = await lastCommittedRound(client);
+    const target = rounds.find(r => r.id > current.id && r.id > committed && r.start >= now + 8000);
     if (!target) throw new Error('NO_FUTURE_ROUND');
     const previous = rounds.find(r => r.id === target.id - 1);
     if (!previous) throw new Error('NO_PREVIOUS_ROUND');
@@ -76,7 +95,8 @@ export async function scheduleRandom(kind: 'grand_aleatoire' | 'petit_aleatoire'
   return withSchedule(async (client, events, now) => {
     const rounds = getSharedSchedule(now, events);
     const current = rounds.find(r => r.start <= now && now < r.end);
-    const target = rounds.find(r => current && r.id > current.id && r.start >= now + 8000);
+    const committed = await lastCommittedRound(client);
+    const target = rounds.find(r => current && r.id > current.id && r.id > committed && r.start >= now + 8000);
     if (!target) throw new Error('NO_FUTURE_ROUND');
     const crash = kind === 'grand_aleatoire' ? randomInt(10000, 100001) / 100 : randomInt(101, 201) / 100;
     const end = target.start + 5000 + Math.log(crash) / .00006 + 3000;

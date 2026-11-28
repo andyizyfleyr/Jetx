@@ -20,5 +20,14 @@ test('auto cashout reserves its actual maximum and remains fully covered', {skip
   const placed=await tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:0,amount:20000,autoTarget:1.1},round,now));assert.equal(placed.balance,29800);assert.equal(placed.riskBudgetCents,8000);
   const reserved=await pool.query("SELECT risk FROM demo_risk_reservations WHERE player_id=$1 AND status='open'",[player]);assert.equal(BigInt(reserved.rows[0].risk),2000n);
   const settled=await tx(t=>skySnapshot(t,player,now+7000));assert.equal(settled.bets.length,0);assert.equal(settled.balance,30020);assert.equal(settled.riskBudgetCents,7800);
+  // A free slot may reserve and cancel a next-round bet during the current flight.
+  const next={id:43,start:now+33000,flightStart:now+38000,crashAt:now+60000,end:now+63000,crash:4,mode:'normal'};
+  const future=await tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:1,amount:20000,autoTarget:1.1},round,now+7000,next));
+  assert.equal(future.bets[0].roundId,43);assert.equal(future.bets[0].status,'queued');assert.deepEqual(future.usedSlots,[0]);assert.equal(future.balance,29820);
+  await assert.rejects(tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:0,amount:20000,autoTarget:1.1},round,now+7000,next)),/GAME_IN_PROGRESS/);
+  const cancel=await tx(t=>skyAction(t,player,randomUUID(),{kind:'cancel',slot:1},round,now+8000,next));assert.equal(cancel.balance,30020);assert.equal(cancel.bets.length,0);
+  const again=await tx(t=>skyAction(t,player,randomUUID(),{kind:'place',slot:1,amount:20000,autoTarget:1.1},round,now+8000,next));assert.equal(again.bets[0].roundId,43);
+  const flying=await tx(t=>skySnapshot(t,player,now+39000,next));assert.equal(flying.bets[0].status,'active');
+  const done=await tx(t=>skySnapshot(t,player,now+41000,next));assert.equal(done.bets.length,0);assert.equal(done.balance,30040);
  }finally{if(pool)await pool.end();await admin.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);await admin.end();fs.rmSync(dir,{recursive:true,force:true});}
 });
