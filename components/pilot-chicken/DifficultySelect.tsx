@@ -1,0 +1,5 @@
+'use client';
+import * as Select from '@radix-ui/react-select';
+import { ChevronDown, Check } from 'lucide-react';
+import { difficulties, type Difficulty, risks } from '@/lib/pilot-chicken/format';
+export default function DifficultySelect({value,onChange,disabled}:{value:Difficulty;onChange:(value:Difficulty)=>void;disabled:boolean}){return <Select.Root value={value} onValueChange={v=>onChange(v as Difficulty)} disabled={disabled}><Select.Trigger className="pc-difficulty" aria-label="Difficulté"><span className="pc-egg" aria-hidden="true"/><Select.Value/><Select.Icon><ChevronDown size={15}/></Select.Icon></Select.Trigger><Select.Portal><Select.Content className="pc-select-content" position="popper" sideOffset={6}><Select.Viewport>{difficulties.map(d=><Select.Item className="pc-select-item" value={d} key={d}><Select.ItemText>{d}</Select.ItemText><span className="pc-risk">{Math.round(risks[d]*100)}% risque</span><Select.ItemIndicator><Check size={15}/></Select.ItemIndicator></Select.Item>)}</Select.Viewport></Select.Content></Select.Portal></Select.Root>}
