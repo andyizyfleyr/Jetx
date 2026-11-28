@@ -4,6 +4,7 @@ import { randomInt } from 'node:crypto';
 import { getSharedSchedule, type GameMode, type ModeEvent } from './sharedRounds';
 
 let pool: Pool | undefined;
+let schemaReady = false;
 function getPool() {
   if (!process.env.DATABASE_URL) return null;
   pool ??= new Pool({ connectionString: process.env.DATABASE_URL, max: 3, connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000 });
@@ -19,6 +20,7 @@ async function withSchedule<T>(callback: (client: PoolClient, events: ModeEvent[
     await client.query("SET LOCAL lock_timeout = '3s'");
     // Serialize reads and writes so no client sees a half-written transition.
     await client.query('SELECT pg_advisory_xact_lock($1)', [194851277]);
+    if (!schemaReady) {
     await client.query(`CREATE TABLE IF NOT EXISTS skyjet_mode_events (
       effective_id bigint PRIMARY KEY, start_ms double precision NOT NULL,
       mode text NOT NULL CHECK (mode IN ('normal','gentil','mechant','pire'))
@@ -31,10 +33,12 @@ async function withSchedule<T>(callback: (client: PoolClient, events: ModeEvent[
       END IF;
     END $$`);
     await client.query('ALTER TABLE skyjet_mode_events ADD COLUMN IF NOT EXISTS crash_override double precision');
+    }
     const rows = await client.query<{ effective_id: string; start_ms: number; mode: GameMode; crash_override: number | null }>('SELECT effective_id, start_ms, mode, crash_override FROM skyjet_mode_events ORDER BY effective_id');
     const events = rows.rows.map(row => ({ effectiveId: Number(row.effective_id), start: Number(row.start_ms), mode: row.mode, crashOverride: row.crash_override == null ? null : Number(row.crash_override) }));
     const result = await callback(client, events, Date.now());
     await client.query('COMMIT');
+    schemaReady = true;
     return result;
   } catch (error) { await client.query('ROLLBACK'); throw error; }
   finally { client.release(); }

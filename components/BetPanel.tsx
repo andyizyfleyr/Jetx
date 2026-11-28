@@ -1,4 +1,5 @@
 'use client';
+import { useShallow } from 'zustand/react/shallow';
 import { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { useGame } from '@/store/game';
@@ -6,7 +7,7 @@ import BetCard from './BetCard';
 import { centralSkyEnabled } from '@/lib/centralSky';
 
 export default function BetPanel({ amounts, setAmounts }: { amounts: string[]; setAmounts: React.Dispatch<React.SetStateAction<string[]>> }) {
-  const { bets, autoCash, autoTarget, autoPlay, maxProfit, set, notify } = useGame();
+  const {bets,autoCash,autoTarget,autoPlay,maxProfit,set,notify}=useGame(useShallow(s=>({bets:s.bets,autoCash:s.autoCash,autoTarget:s.autoTarget,autoPlay:s.autoPlay,maxProfit:s.maxProfit,set:s.set,notify:s.notify})));
   const [draft, setDraft] = useState(() => String(autoTarget));
   const [editing, setEditing] = useState(false);
   const applyTarget = () => {

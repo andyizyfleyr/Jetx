@@ -1,4 +1,5 @@
 'use client';
+import { useShallow } from 'zustand/react/shallow';
 import { useGame } from '@/store/game';
 import { skyBatch } from '@/lib/centralSky';
 import { isValidBetAmount } from '@/lib/betLimits';
@@ -6,7 +7,7 @@ const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 
 
 /** Kept outside the scrolling area so round actions are always within reach. */
 export default function BulkActions({ amounts }: { amounts: string[] }) {
-  const { bets, phase, multiplier, notify, set, syncReady } = useGame();
+  const {bets,phase,multiplier,notify,set,syncReady,actionPending}=useGame(useShallow(s=>({bets:s.bets,phase:s.phase,multiplier:s.multiplier,notify:s.notify,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending})));
   const active = bets.filter(b => b.status === 'active'), queued = bets.filter(b => b.status === 'queued'), free = bets.filter(b => b.status === 'empty');
   const values = amounts.map(value => Number(value.replace(',', '.')));
   const totalPlace = bets.reduce((sum, bet, i) => sum + (bet.status === 'empty' && isValidBetAmount(values[i]) ? Math.round(values[i] * 100) / 100 : 0), 0);
@@ -21,9 +22,9 @@ export default function BulkActions({ amounts }: { amounts: string[] }) {
   };
   return <div className="bulk-fixed">
     <div className="bulk-actions classic-actions" aria-label="Actions groupées">
-      {phase === 'FLYING' && active.length > 0 ? <button className="all-button all-green" disabled={!syncReady} onClick={() => { void skyBatch(bets.flatMap((b,i)=>b.status==='active'?[{kind:'cash' as const,slot:i}]:[])); }}><strong>Tout encaisser</strong><span>{money(totalActive)} ₣</span></button>
-        : queued.length > 0 ? <button className="all-button all-red" disabled={!syncReady} onClick={() => { void skyBatch(bets.flatMap((b,i)=>b.status==='queued'?[{kind:'cancel' as const,slot:i}]:[])); }}><strong>Tout annuler</strong><span>{money(totalQueued)} ₣</span></button>
-        : <button className="all-button all-place" disabled={!syncReady || free.length === 0} onClick={placeEverything}><strong>Placer toutes les mises</strong><span>{money(totalPlace)} ₣{phase !== 'WAITING' ? ' · prochaine manche' : ''}</span></button>}
+      {phase === 'FLYING' && active.length > 0 ? <button className="all-button all-green" disabled={!syncReady || actionPending} onClick={() => { void skyBatch(bets.flatMap((b,i)=>b.status==='active'?[{kind:'cash' as const,slot:i}]:[])); }}><strong>{actionPending?'Patientez…':'Tout encaisser'}</strong><span>{money(totalActive)} ₣</span></button>
+        : queued.length > 0 ? <button className="all-button all-red" disabled={!syncReady || actionPending} onClick={() => { void skyBatch(bets.flatMap((b,i)=>b.status==='queued'?[{kind:'cancel' as const,slot:i}]:[])); }}><strong>{actionPending?'Patientez…':'Tout annuler'}</strong><span>{money(totalQueued)} ₣</span></button>
+        : <button className="all-button all-place" disabled={!syncReady || actionPending || free.length === 0} onClick={placeEverything}><strong>{actionPending?'Patientez…':'Placer toutes les mises'}</strong><span>{money(totalPlace)} ₣{phase !== 'WAITING' ? ' · prochaine manche' : ''}</span></button>}
     </div>
   </div>;
 }
