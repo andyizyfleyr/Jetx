@@ -24,7 +24,7 @@ async function settleDue(tx:PoolClient,now:number){
  }
 }
 async function snapshot(tx:PoolClient,playerId:string,now:number){
- const wallet=await tx.query<{balance:string}>('SELECT balance FROM demo_wallets WHERE player_id=$1 AND game=$2',[playerId,'skyjet']);
+ const wallet=await tx.query<{balance:string}>('SELECT balance FROM demo_shared_wallets WHERE player_id=$1',[playerId]);
  const bets=(await openBets(tx,playerId)).map(b=>({slot:b.slot,amount:Number(b.stake)/100,roundId:Number(b.round_id),status:now<b.flight_start?'queued':'active',capPayout:Number(b.cap_payout)/100}));
  const equity=await tx.query<{equity:string}>('SELECT equity FROM demo_treasury WHERE id=1');
  return {balance:Number(wallet.rows[0].balance)/100,bets,maxProfit:Number(BigInt(equity.rows[0].equity)/BigInt(100))/100};

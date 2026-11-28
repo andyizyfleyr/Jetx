@@ -26,7 +26,7 @@ test('two games cannot reserve the same remaining capacity concurrently', {skip:
   try {
     await admin.query(`CREATE SCHEMA ${schema}`);
     pool=new Pool({connectionString:url,options:`-c search_path=${schema}`,max:8});
-    for(const migration of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql']) await pool.query(fs.readFileSync(path.join(root,'db/migrations',migration),'utf8'));
+    for(const migration of ['001_fictitious_treasury.sql','002_fictitious_wallet.sql','005_shared_wallet.sql']) await pool.query(fs.readFileSync(path.join(root,'db/migrations',migration),'utf8'));
     const players=[randomUUID(),randomUUID()];
     for(let i=0;i<2;i++) await withTreasuryTransaction(pool,tx=>createDemoWallet(tx,players[i],i===0?'skyjet':'pilot-chicken',randomUUID()));
     for(let i=0;i<9;i++) await withTreasuryTransaction(pool,tx=>reserveRisk(tx,{betId:randomUUID(),playerId:randomUUID(),game:'skyjet',proposedRisk:100000n,operationId:randomUUID()}));
@@ -36,8 +36,8 @@ test('two games cannot reserve the same remaining capacity concurrently', {skip:
     assert.equal(failure.reason.code,'RISK_HOURLY_LIMIT');
     const {rows}=await pool.query("SELECT sum(risk) AS risk FROM demo_risk_reservations WHERE status='open'");
     assert.equal(BigInt(rows[0].risk),1000000n);
-    const wallets=await pool.query('SELECT player_id,balance FROM demo_wallets');
-    const debited=wallets.rows.filter(row=>BigInt(row.balance) === (row.player_id===players[0]?2082985n:2950000n));
+    const wallets=await pool.query('SELECT player_id,balance FROM demo_shared_wallets');
+    const debited=wallets.rows.filter(row=>BigInt(row.balance) === 2950000n);
     assert.equal(debited.length,1,'the rejected bet must roll back its wallet debit');
   } finally {
     if(pool) await pool.end();
