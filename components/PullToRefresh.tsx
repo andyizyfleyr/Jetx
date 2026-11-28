@@ -54,9 +54,7 @@ export default function PullToRefresh() {
       document.removeEventListener('touchend', end); document.removeEventListener('touchcancel', cancel);
     };
   }, []);
-  const ready = distance >= THRESHOLD * .55;
-  return <div className={`pull-refresh${refreshing ? ' is-refreshing' : ''}`} aria-hidden={!distance} role="status" style={{ transform: `translate(-50%, ${distance - 70}px)`, opacity: distance > 8 ? 1 : 0 }}>
+  return <div className={`pull-refresh${refreshing ? ' is-refreshing' : ''}`} aria-hidden={!distance} aria-label={refreshing ? "Actualisation en cours" : "Tirez pour actualiser"} role="status" style={{ transform: `translate(-50%, ${distance - 70}px)`, opacity: distance > 8 ? 1 : 0 }}>
     <RefreshCw size={17} style={{ transform: refreshing ? undefined : `rotate(${distance * 4}deg)` }} />
-    <span>{refreshing ? 'Actualisation…' : ready ? 'Relâchez pour actualiser' : 'Tirez pour actualiser'}</span>
   </div>;
 }
