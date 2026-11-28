@@ -38,12 +38,21 @@ export function useGameEngine() {
       {
         const roundChanged=s.roundId!==round.id;
         const latestCrash=rounds.filter(r=>r.crashAt<=now).at(-1);
-        const history=rounds.filter(r=>r.crashAt<=now).slice(-20).reverse().map(r=>({value:r.crash,time:new Date(r.crashAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})}));
+        const key=latestCrash?.id??-Infinity;
+        const history=key!==historyKey ? rounds.filter(r=>r.crashAt<=now).slice(-20).reverse().map(r=>({value:r.crash,time:new Date(r.crashAt).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})})) : s.history;
+        historyKey=key;
         let players=roundChanged?makePlayers():s.players;
-        if(phase==='FLYING')players=players.map(p=>!p.cashed&&multiplier>=p.target?{...p,cashed:true}:p);
-        s.set({syncReady:serverReady,roundId:round.id,phase,multiplier,countdown:phase==='WAITING'?Math.max(0,Math.ceil((round.flightStart-now)/1000)):0,history,players, ...(roundChanged?{online:2050+Math.floor(Math.random()*110)}:{})});
-        if(latestCrash?.id!==historyKey)historyKey=latestCrash?.id??-Infinity;
-        if(s.roundId>=0 && (s.phase!==phase || roundChanged) && phase==='CRASHED')playSound('crash',s.sound);
+        if(phase==='FLYING' && players.some(p=>!p.cashed&&multiplier>=p.target))players=players.map(p=>!p.cashed&&multiplier>=p.target?{...p,cashed:true}:p);
+        const countdown=phase==='WAITING'?Math.max(0,Math.ceil((round.flightStart-now)/1000)):0;
+        if(s.syncReady!==serverReady || roundChanged || s.phase!==phase || s.multiplier!==multiplier || s.countdown!==countdown || s.history!==history || s.players!==players){
+          s.set({syncReady:serverReady,roundId:round.id,phase,multiplier,countdown,history,players, ...(roundChanged?{online:2050+Math.floor(Math.random()*110)}:{})});
+        }
+        if(s.roundId>=0 && (s.phase!==phase || roundChanged)) {
+          if(phase==='CRASHED')playSound('crash',s.sound);
+          // Refresh bet state immediately when a round changes phase instead of
+          // leaving the cash-out controls waiting for the next scheduled poll.
+          void refresh();
+        }
         if(phase==='WAITING'){const tick=Math.ceil((round.flightStart-now)/1000);if(tick!==lastTick&&tick>0){lastTick=tick;playSound('tick',s.sound);}}else lastTick=-1;
         updateEngine(s.sound&&phase==='FLYING'&&document.visibilityState==='visible',multiplier);
         return serverReady;
@@ -54,13 +63,17 @@ export function useGameEngine() {
     refresh = async () => {
       if (inflight || stopped) return;
       inflight = true;
-      const before = performance.now();
       try {
-        try{await refreshSky();serverReady=true;}catch{serverReady=false;useGame.setState({syncReady:false});}
+        // These independent requests run together. Clock latency is measured
+        // from the clock request alone, not from the wallet request before it.
+        const sky = refreshSky().then(()=>true,()=>false);
+        const before = performance.now();
         const response = await fetch('/api/round', { cache: 'no-store', signal: controller.signal });
-        if (!response.ok) throw new Error('Clock request failed');
         const data: { serverTime: number; rounds: SharedRound[] } = await response.json();
         const after = performance.now();
+        serverReady=await sky;
+        if(!serverReady)useGame.setState({syncReady:false});
+        if (!response.ok) throw new Error('Clock request failed');
         if (stopped || !Number.isFinite(data.serverTime) || !Array.isArray(data.rounds) || !data.rounds.length) return;
         if (document.visibilityState !== 'visible') return;
         const authoritativeRound = data.rounds.find(r => r.start <= data.serverTime && data.serverTime < r.end);

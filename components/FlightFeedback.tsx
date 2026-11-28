@@ -1,11 +1,12 @@
 'use client';
+import { useShallow } from 'zustand/react/shallow';
 import { useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useGame } from '@/store/game';
 
 // Feedback is independent of layout so it never moves the game or betting controls.
 export default function FlightFeedback() {
-  const { feedback, clearFeedback, animations } = useGame();
+  const {feedback,clearFeedback,animations}=useGame(useShallow(s=>({feedback:s.feedback,clearFeedback:s.clearFeedback,animations:s.animations})));
   const reduced = useReducedMotion();
   const animate = animations && !reduced;
   useEffect(() => {

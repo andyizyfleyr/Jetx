@@ -1,4 +1,5 @@
 'use client';
+import { useShallow } from 'zustand/react/shallow';
 import { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -9,7 +10,7 @@ const money = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 
 
 export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; index: number; amount: string; setAmount: (value: string) => void }) {
   const [error, setError] = useState('');
-  const { multiplier, balance, phase, invalidBets, set, syncReady } = useGame();
+  const {multiplier,balance,phase,invalidBets,set,syncReady,actionPending}=useGame(useShallow(s=>({multiplier:s.multiplier,balance:s.balance,phase:s.phase,invalidBets:s.invalidBets,set:s.set,syncReady:s.syncReady,actionPending:s.actionPending})));
   const invalid = invalidBets.includes(index);
   const update = (value: string) => { setAmount(value); setError(''); if (invalid) set({ invalidBets: useGame.getState().invalidBets.filter(i => i !== index) }); };
   const submit = () => {
@@ -28,11 +29,11 @@ export default function BetCard({ bet, index, amount, setAmount }: { bet: Bet; i
       </div>
       <div className="quick-bets">{QUICK_BETS.map(n => <button key={n} className={Number(amount.replace(',', '.')) === n ? 'chosen' : ''} onClick={() => update(String(n))}>{n.toLocaleString('fr-FR')} ₣</button>)}</div>
       {error && <div className="card-error" role="status">{error}</div>}
-      <button className="bet-button bet-green" disabled={!syncReady} onClick={submit}>Miser</button>
+      <button className="bet-button bet-green" disabled={!syncReady || actionPending} onClick={submit}>{actionPending?'Patientez…':'Miser'}</button>
     </> : <>
       <div className="bet-caption">{bet.status === 'active' ? 'Vous gagnez' : phase === 'WAITING' ? 'Mise placée · cette manche' : 'En attente de la prochaine manche'}</div>
       <div className="bet-value">{money(bet.status === 'active' ? Math.min(bet.capPayout ?? Infinity, Math.floor(bet.amount * multiplier * 100) / 100) : bet.amount)} ₣</div>
-      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady} onClick={() => { void skyCommand(bet.status==='active'?'cash':'cancel',index); }}>{bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
+      <button className={`bet-button ${bet.status === 'active' ? 'bet-green' : 'bet-red'}`} disabled={!syncReady || actionPending} onClick={() => { void skyCommand(bet.status==='active'?'cash':'cancel',index); }}>{actionPending ? 'Patientez…' : bet.status === 'active' ? 'Encaisser' : 'Annuler'}</button>
     </>}
   </motion.div>;
 }
