@@ -25,7 +25,7 @@ export default function GameScene(props:SceneState){
       if(previous>s.step&&s.step===0)position=142;lastStep=s.step;lastDifficulty=s.difficulty;lastPhase=s.phase;
     }
     camera.x=Math.max(0,Math.min(4300-view,position-view*.34));world.x=-camera.x*scale+(shake>0?(Math.random()-.5)*shake*8:0);shake*=.90;if(shake<.01)shake=0;
-    const time=now/1000,elapsed=(now-phaseStart)/1000;const jumpProgress=Math.min(1,Math.max(0,(now-stepStart)/480));const jump=reduce.matches?0:Math.sin(jumpProgress*Math.PI)*45;const bob=reduce.matches?0:Math.sin(time*3)*3;shadow.x=position;shadow.y=342;chicken.x=position;chicken.y=342+bob-jump;chicken.rotation=s.phase==='lost'?.16:Math.sin(time*2)*.018;chicken.alpha=s.phase==='lost'?.68:1;
+    const time=now/1000,elapsed=(now-phaseStart)/1000;const jumpProgress=Math.min(1,Math.max(0,(now-stepStart)/480));const jump=reduce.matches?0:Math.sin(jumpProgress*Math.PI)*45;const bob=reduce.matches?0:Math.sin(time*3)*3;shadow.x=position;shadow.y=398;chicken.x=position;chicken.y=405+bob-jump;chicken.rotation=s.phase==='lost'?.16:Math.sin(time*2)*.018;chicken.alpha=s.phase==='lost'?.68:1;
     impact.visible=s.phase==='lost'&&elapsed<1.5;if(impact.visible){impact.x=position;impact.y=Math.min(300,-100+elapsed*1050);}
     particles.clear();if((s.phase==='won'||s.phase==='lost')&&elapsed<1.8){for(let i=0;i<22;i++){const a=i*2.4,dist=elapsed*(55+(i%5)*19);particles.circle(position+Math.cos(a)*dist,280+Math.sin(a)*dist+elapsed*elapsed*25,i%3+2).fill({color:s.phase==='won'?0xffd667:0xbbb4c3,alpha:Math.max(0,1-elapsed/1.8)});}}
    });cleanup=()=>{tween?.kill();app.destroy(true,{children:true});};
